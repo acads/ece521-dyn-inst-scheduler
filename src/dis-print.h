@@ -13,5 +13,9 @@
 
 #include "dis.h"
 
+/* Function declarations */
+void
+dis_print_input_data(struct dis_input *dis);
+
 #endif /* DIS_PRINT_H_ */
 
