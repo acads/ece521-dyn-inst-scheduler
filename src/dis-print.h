@@ -15,6 +15,8 @@
 
 /* Function declarations */
 void
+dis_print_inst_list(struct dis_input *dis);
+void
 dis_print_input_data(struct dis_input *dis);
 
 #endif /* DIS_PRINT_H_ */

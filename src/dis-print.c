@@ -20,6 +20,32 @@
 #include "dis-utils.h"
 #include "dis-print.h"
 #include "dis-tomasulo.h"
+#include "utlist.h"
+
+
+void
+dis_print_inst_list(struct dis_input *dis)
+{
+    int16_t                 dreg = 0;
+    int16_t                 sreg1 = 0;
+    int16_t                 sreg2 = 0;
+    struct dis_inst_node    *iter = NULL;
+
+    DL_FOREACH(dis->list_inst->list, iter) {
+        dreg = (REG_INVALID_VALUE == iter->data->dreg) ? 
+            REG_NO_VALUE : iter->data->dreg;
+        sreg1 = (REG_INVALID_VALUE == iter->data->sreg1) ? 
+            REG_NO_VALUE : iter->data->sreg1;
+        sreg2 = (REG_INVALID_VALUE == iter->data->sreg2) ? 
+            REG_NO_VALUE : iter->data->sreg2;
+
+        dprint("inum %u, pc %x, dreg %d, sreg1 %d, sreg2 %d, mem_addr %x\n",
+                iter->data->num, iter->data->pc, dreg, sreg1, sreg2,
+                iter->data->mem_addr);
+    }
+
+    return;
+}
 
 void
 dis_print_input_data(struct dis_input *dis)
