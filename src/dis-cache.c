@@ -1,8 +1,9 @@
 /* 
  * ECE 521 - Computer Design Techniques, Fall 2014
- * Project 2 - Branch Predictor Implementation 
+ * Project 3 - Dynamic Instruction Scheduler 
  *
- * This module implements the bramch target buffer for branch predictor. 
+ * This module implements the data caches required for the dynamic instrction
+ * scheduler. 
  *
  * Author: Aravindhan Dhanasekaran <adhanas@ncsu.edu>
  */
@@ -17,6 +18,8 @@
 #include "dis.h"
 #include "dis-utils.h"
 #include "dis-print.h"
+#include "dis-cache.h"
+#include "dis-cache-utils.h"
 
 const char          *g_dirty = "D"; /* used to denote dirty blocks  */
 

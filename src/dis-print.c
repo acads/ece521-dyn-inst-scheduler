@@ -19,7 +19,6 @@
 #include "dis.h"
 #include "dis-utils.h"
 #include "dis-print.h"
-#include "dis-tomasulo.h"
 #include "utlist.h"
 
 const char *inst_states[] = {"if", "id", "dp", "is", "ex", "wb"};

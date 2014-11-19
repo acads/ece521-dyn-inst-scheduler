@@ -48,6 +48,13 @@ typedef enum inst_state__ {
 } inst_state;
 
 
+/* Externs */
+extern uint32_t g_inst_num;
+extern uint32_t g_cycle_num;
+extern FILE *g_trace_fptr;
+
+
+/* Data structures */
 /* Inst list; fake ROB. */
 struct dis_inst_node {
     struct dis_inst_data *data;
