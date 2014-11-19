@@ -1,0 +1,24 @@
+Added partial support for dispatch stage handler
+
+Fix Description
+===============
+    * Support for dispatch handler. Currently handles IF-->ID state transition.
+    * Disable optimization and warnings-as-errors in Makefile.
+    * New dispatch statge utlist dll.
+    * New routine for can_fetch conditions check (to be evolved).
+    * Many more static inline util routines.
+    * TODO: Update dispatch handler with ID-->IS state transistions.
+    * TODO: Support for issue stage handler.
+
+Stats
+=====
+ src/Makefile    |   1 +
+ src/dis-print.c |  26 ++++++++++
+ src/dis-print.h |   2 +
+ src/dis.c       | 199 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ src/dis.h       |  47 +++++++++++++++---
+ 5 files changed, 261 insertions(+), 14 deletions(-)
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+time ./sim 16 4 0 0 0 0 0 gcc.100 
