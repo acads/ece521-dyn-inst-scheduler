@@ -22,16 +22,38 @@
 #include "dis-tomasulo.h"
 #include "utlist.h"
 
+const char *inst_states[] = {"if", "id", "dp", "is", "ex", "wb"};
 
 void
-dis_print_inst_list(struct dis_input *dis)
+dis_print_list(struct dis_input *dis, uint8_t list_type)
 {
     int16_t                 dreg = 0;
     int16_t                 sreg1 = 0;
     int16_t                 sreg2 = 0;
     struct dis_inst_node    *iter = NULL;
+    struct dis_inst_node    *list = NULL;
 
-    DL_FOREACH(dis->list_inst->list, iter) {
+    switch (list_type) {
+        case LIST_INST:
+            dprint("\n");
+            dprint("inst list\n");
+            dprint("---------\n");
+            list = dis->list_inst->list;
+            break;
+
+        case LIST_DISP:
+            dprint("\n");
+            dprint("disp list\n");
+            dprint("---------\n");
+            list = dis->list_disp->list;
+            break;
+
+        default:
+            dis_assert(0);
+            goto exit;
+    }
+
+    DL_FOREACH(list, iter) {
         dreg = (REG_INVALID_VALUE == iter->data->dreg) ? 
             REG_NO_VALUE : iter->data->dreg;
         sreg1 = (REG_INVALID_VALUE == iter->data->sreg1) ? 
@@ -39,11 +61,13 @@ dis_print_inst_list(struct dis_input *dis)
         sreg2 = (REG_INVALID_VALUE == iter->data->sreg2) ? 
             REG_NO_VALUE : iter->data->sreg2;
 
-        dprint("inum %u, pc %x, dreg %d, sreg1 %d, sreg2 %d, mem_addr %x\n",
+        dprint("inum %5u, pc 0x%x, dreg %3d, sreg1 %3d, sreg2 %3d, "    \
+                "mem_addr 0x%08x, state %s\n",
                 iter->data->num, iter->data->pc, dreg, sreg1, sreg2,
-                iter->data->mem_addr);
+                iter->data->mem_addr, inst_states[iter->data->state]);
     }
 
+exit:
     return;
 }
 

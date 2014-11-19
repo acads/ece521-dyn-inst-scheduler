@@ -22,6 +22,10 @@
 #define REG_MAX_VALUE           127
 #define REG_NO_VALUE            -1
 #define REG_INVALID_VALUE       (REG_MAX_VALUE + 1)
+#define LIST_INST               0
+#define LIST_DISP               1
+#define LIST_ISSUE              2
+#define LIST_EXEC               3
 
 #ifndef TRUE
 #define TRUE    1
@@ -51,6 +55,12 @@ struct dis_inst_node {
     struct dis_inst_node *next;
 };
 
+/* Dispatch list */
+struct dis_disp_list {
+    struct dis_inst_node    *list;  /* actual dispatch list */
+    uint32_t                len;    /* length of the list   */
+};
+
 /* Inst list; fake ROB. */
 struct dis_inst_list {
     struct dis_inst_node    *list;  /* actual inst. doubly ll   */
@@ -60,6 +70,7 @@ struct dis_inst_list {
 /* Instruction data */
 struct dis_inst_data {
     uint32_t    num;                /* instrction number        */
+    uint8_t     state;              /* fetch/decode/dispatch... */
     uint32_t    pc;                 /* pc as given in trace     */
     uint8_t     type;               /* inst type - 0, 1, 2      */
     uint8_t     dreg;               /* dst register             */
@@ -72,12 +83,13 @@ struct dis_inst_data {
 
 /* Main scheduler info data */
 struct dis_input {
-    uint32_t                s;      /* Size of scheduling queue */
-    uint32_t                n;      /* Pipeline bandwidth       */
-    cache_generic_t         *l1;    /* L1 cache data            */
-    cache_generic_t         *l2;    /* L2 cache data            */
-    char                    tracefile[MAX_FILE_NAME_LEN + 1];
-    struct dis_inst_list    *list_inst;    /* inst. list           */
+    uint32_t                    s;      /* Size of scheduling queue */
+    uint32_t                    n;      /* Pipeline bandwidth       */
+    cache_generic_t             *l1;    /* L1 cache data            */
+    cache_generic_t             *l2;    /* L2 cache data            */
+    char                        tracefile[MAX_FILE_NAME_LEN + 1];
+    struct dis_inst_list        *list_inst;     /* inst. list       */
+    struct dis_disp_list        *list_disp;     /* dispatch list    */
 };
 
 

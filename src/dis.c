@@ -67,26 +67,101 @@ dis_get_inst_num(void)
     return g_inst_num;
 }
 
-/* Increments the length of the inst list */
 static inline void
-dis_inst_list_increment_len(struct dis_input *dis)
+dis_inst_set_state(struct dis_inst_node *inst_node, uint32_t state)
 {
-    dis->list_inst->len += 1;
+    inst_node->data->state = state;
+    return;
 }
 
-/* Decrements the length of the inst list */
-static inline void
-dis_inst_list_decrement_len(struct dis_input *dis)
-{
-    if (dis->list_inst->len)
-        dis->list_inst->len -= 1;
-}
-
-/* Returns the length of the inst list */
 static inline uint32_t
-dis_inst_list_get_len(struct dis_input *dis)
+dis_inst_get_state(struct dis_inst_node *inst_node)
 {
-    return dis->list_inst->len;
+    return inst_node->data->state;
+}
+
+/* Increments the length of the given list */
+static inline void
+dis_inst_list_increment_len(struct dis_input *dis, uint8_t list)
+{
+    switch (list) {
+    case LIST_INST:
+        dis->list_inst->len += 1;
+        return;
+    case LIST_DISP:
+        dis->list_disp->len += 1;
+        return;
+    default:
+        dis_assert(0);
+        return;
+    }
+}
+
+/* Decrements the length of the given list */
+static inline void
+dis_inst_list_decrement_len(struct dis_input *dis, uint8_t list)
+{
+    switch (list) {
+    case LIST_INST:
+        if (dis->list_inst->len)
+            dis->list_inst->len -= 1;
+        return;
+    case LIST_DISP:
+        if (dis->list_disp->len)
+            dis->list_disp->len += 1;
+        return;
+    default:
+        dis_assert(0);
+        return;
+    }
+}
+
+/* Returns the length of the given list */
+static uint32_t
+dis_inst_list_get_len(struct dis_input *dis, uint8_t list)
+{
+    switch (list) {
+    case LIST_INST:
+        return dis->list_inst->len;
+    case LIST_DISP:
+        return dis->list_disp->len;
+    default:
+        dprint_err("%u\n", list);
+        dis_assert(0);
+        return 0;
+    }
+}
+
+/* Checks whether the given list is full (TRUE) or not (FALSE). */
+static inline bool
+dis_is_list_full(struct dis_input *dis, uint8_t list)
+{
+    switch (list) {
+    case LIST_INST:
+        return TRUE;
+    case LIST_DISP:
+        return ((dis_inst_list_get_len(dis, LIST_DISP) >= (2 * dis->n)));
+    case LIST_ISSUE:
+        return ((dis_inst_list_get_len(dis, LIST_ISSUE) >= dis->s));
+    default:
+        dis_assert(0);
+        return TRUE;
+    }
+}
+
+/* Checks whether or not inst can be added to dispatch list. */
+static inline bool
+dis_can_push_on_list(struct dis_input *dis, uint8_t list)
+{
+    switch (list) {
+    case LIST_INST:
+        return !dis_is_list_full(dis, LIST_INST);
+    case LIST_DISP:
+        return !dis_is_list_full(dis, LIST_DISP);
+    default:
+        dis_assert(0);
+        return FALSE;
+    }
 }
 
 /* dis init routine */
@@ -104,10 +179,13 @@ dis_init(struct dis_input *dis)
     dis->l1 = &g_dis_l1;
     dis->l2 = &g_dis_l2;
 
-    dis->list_inst = (struct dis_inst_list *) 
+    dis->list_inst = (struct dis_inst_list *)
                             calloc(1, sizeof(*dis->list_inst));
     dis->list_inst->list = 0;
     dis->list_inst->len = 0;
+
+    dis->list_disp = (struct dis_disp_list *)
+                            calloc(1, sizeof(*dis->list_disp));
 
 exit:
     return;
@@ -117,33 +195,102 @@ exit:
 static void
 dis_cleanup(struct dis_input *dis)
 {
-    if (dis->list_inst) {
-        struct dis_inst_node    *iter = NULL;
-        struct dis_inst_node    *tmp = NULL;
+    struct dis_inst_node    *iter = NULL;
+    struct dis_inst_node    *tmp = NULL;
 
+    if (dis->list_inst) {
         DL_FOREACH_SAFE(dis->list_inst->list, iter, tmp) {
             free(iter->data);
             free(iter);
         }
+        iter = tmp = NULL;
+        free(dis->list_inst);
+        dis->list_inst = NULL;
+    }
+
+    if (dis->list_disp) {
+        DL_FOREACH_SAFE(dis->list_disp->list, iter, tmp) {
+            free(iter->data);
+            free(iter);
+        }
+        iter = tmp = NULL;
+        free(dis->list_disp);
+        dis->list_disp = NULL;
     }
 
     return;
 }
 
+/* Puts the inst on the dispatch list, provided the list has room. */
+static inline bool
+dis_dispatch_push_inst(struct dis_input *dis, struct dis_inst_node *inst)
+{
+    if (dis_can_push_on_list(dis, LIST_DISP)) {
+        struct dis_inst_node *node  = NULL;
+
+        node = (struct dis_inst_node *) calloc(1, sizeof(*node));
+        node->data = inst->data;
+
+        DL_APPEND(dis->list_disp->list, node);
+        dis_inst_list_increment_len(dis, LIST_DISP);
+        dprint_info("inst %u, pc 0x%x pushed onto dispatch list, len %u\n",
+                node->data->num, node->data->pc,
+                dis_inst_list_get_len(dis, LIST_DISP));
+        return TRUE;
+    }
+    return FALSE;
+}
+
+/*
+ * Dispatch stage of the pipeline. This has 1 cycle delay for inst in IF state
+ * and moves the inst in ID state to issue list.
+ */
 static bool
-dis_inst_fetch(struct dis_input *dis)
+dis_dispatch(struct dis_input *dis)
+{
+    struct dis_inst_node    *iter = NULL;
+    struct dis_inst_node    *list = NULL;
+
+    if (!dis) {
+        dis_assert(0);
+        goto error_exit;
+    }
+    list = dis->list_disp->list;
+
+    /* First move insts in ID state to the issue list. */
+
+    /* Now, move the inst in IF state to ID state. */
+    DL_FOREACH(list, iter) {
+        if (STATE_IF == dis_inst_get_state(iter))
+            dis_inst_set_state(iter, STATE_ID);
+    }
+
+    return TRUE;
+
+error_exit:
+    return FALSE;
+}
+
+/*
+ * Fetch instructions from tracefile and push them onto main inst list
+ * and then onto dispatch list. All constraints given in section 5.2.4 in
+ * docs/pa2_spec.pdf apply.
+ */
+static bool
+dis_fetch(struct dis_input *dis)
 {
     char newline = '\n';
     int         fscanf_rv = 0;
     int32_t     dreg = 0;
     int32_t     sreg1 = 0;
     int32_t     sreg2 = 0;
-    uint32_t     inst_type = 0;
+    uint32_t    inst_type = 0;
     uint32_t    inst_i = 0;
     uint32_t    pc = 0;
     uint32_t    mem_addr = 0;
 
     struct dis_inst_data *new_inst = NULL;
+    struct dis_inst_node *iter = NULL;
     struct dis_inst_node *new_inst_node = NULL;
 
     if (!dis) {
@@ -179,16 +326,19 @@ dis_inst_fetch(struct dis_input *dis)
         new_inst_node = (struct dis_inst_node *) 
                             calloc(1, sizeof(*new_inst_node));
         new_inst_node->data = new_inst;
+        dis_inst_set_state(new_inst_node, STATE_IF);
+
         DL_APPEND(dis->list_inst->list, new_inst_node);
-        dis_inst_list_increment_len(dis);
+        dis_inst_list_increment_len(dis, LIST_INST);
         dprint_info("inst %u, pc %x appended to inst list, list len %u\n", 
-                new_inst->num, pc, dis_inst_list_get_len(dis));
+                new_inst->num, pc, dis_inst_list_get_len(dis, LIST_INST));
     }
 
-#ifdef DBG_ON
-    /* Print all inst fetched so far. */
-    dis_print_inst_list(dis);
-#endif /* DBG_ON */
+    /* Put the inst on the dispatch list. */
+    DL_FOREACH(dis->list_inst->list, iter) {
+        if (!dis_dispatch_push_inst(dis, iter))
+            break;
+    }
 
     return TRUE;
 
@@ -217,8 +367,10 @@ dis_parse_tracefile(struct dis_input *dis)
     }
 
     do {
+        dprint_info("curr cycle %u\n", dis_get_cycle_num());
+
         if (!trace_done) {
-            if (!dis_inst_fetch(dis)) {
+            if (!dis_fetch(dis)) {
                 /* Done with tracefile. Close it. */
                 trace_done = TRUE;
                 fclose(g_trace_fptr);
@@ -228,14 +380,21 @@ dis_parse_tracefile(struct dis_input *dis)
         if (trace_done)
             break;
 
+        /* Dispatch stage. */
+        dis_dispatch(dis);
 #if 0
-        dis_inst_dispatch();
         dis_inst_issue();
         dis_inst_execute();
         dis_inst_writeback();
         dis_inst_retire();
 #endif
     } while (dis_run_cycle());
+
+#ifdef DBG_ON
+    /* Print all inst fetched so far. */
+    dis_print_list(dis, LIST_INST);
+    dis_print_list(dis, LIST_DISP);
+#endif /* DBG_ON */
 
 
     return TRUE;
@@ -345,3 +504,4 @@ error_exit:
     dis_cleanup(dis);
     return -1;
 }
+

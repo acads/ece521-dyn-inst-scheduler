@@ -15,7 +15,7 @@
 
 /* Function declarations */
 void
-dis_print_inst_list(struct dis_input *dis);
+dis_print_list(struct dis_input *dis, uint8_t list_type);
 void
 dis_print_input_data(struct dis_input *dis);
 
