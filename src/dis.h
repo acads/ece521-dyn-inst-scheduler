@@ -18,10 +18,13 @@
 /* Constants */
 #define DS_NUM_INPUT_PARAMS     8
 #define MAX_FILE_NAME_LEN       255
+
+#define REG_TOTAL               128
 #define REG_MIN_VALUE           0
 #define REG_MAX_VALUE           127
 #define REG_NO_VALUE            -1
 #define REG_INVALID_VALUE       (REG_MAX_VALUE + 1)
+
 #define LIST_INST               0
 #define LIST_DISP               1
 #define LIST_ISSUE              2
@@ -88,15 +91,29 @@ struct dis_inst_data {
 
 };
 
+/* Register data */
+struct dis_reg_data {
+    uint16_t    rnum;               /* register number, 0 - 127     */
+    uint32_t    name;               /* newest assigned name         */
+    uint32_t    cycle;              /* when it was renamed last?    */
+    bool        ready;              /* ready or not?                */
+};
+
 /* Main scheduler info data */
 struct dis_input {
-    uint32_t                    s;      /* Size of scheduling queue */
-    uint32_t                    n;      /* Pipeline bandwidth       */
-    cache_generic_t             *l1;    /* L1 cache data            */
-    cache_generic_t             *l2;    /* L2 cache data            */
+    /* configuration data */
+    uint32_t                    s;      /* Size of scheduling queue     */
+    uint32_t                    n;      /* Pipeline bandwidth           */
+    cache_generic_t             *l1;    /* L1 cache data                */
+    cache_generic_t             *l2;    /* L2 cache data                */
     char                        tracefile[MAX_FILE_NAME_LEN + 1];
-    struct dis_inst_list        *list_inst;     /* inst. list       */
-    struct dis_disp_list        *list_disp;     /* dispatch list    */
+
+    /* registers */
+    struct dis_reg_data         *rmt[REG_TOTAL];       /* register data/rmt        */
+
+    /* pipeline lists */
+    struct dis_inst_list        *list_inst; /* inst. list               */
+    struct dis_disp_list        *list_disp; /* dispatch list            */
 };
 
 

@@ -22,22 +22,24 @@
 #include "utlist.h"
 
 /* Globals */
-uint32_t                g_inst_num;     /* current instruction #    */
-uint32_t                g_cycle_num;    /* current cycle #          */
-FILE                    *g_trace_fptr;  /* tracefile ptr            */
+uint32_t                g_inst_num;         /* current instruction #    */
+uint32_t                g_cycle_num;        /* current cycle #          */
+FILE                    *g_trace_fptr;      /* tracefile ptr            */
 
-struct dis_input        g_dis;          /* global dis data          */
+struct dis_input        g_dis;              /* global dis data          */
 
-cache_generic_t         g_dis_l1;       /* dis l1 data cache        */
-cache_generic_t         g_dis_l2;       /* dis l2 data cache        */
-cache_tagstore_t        g_dis_l1_ts;    /* dis l1 tagstore          */
-cache_tagstore_t        g_dis_l2_ts;    /* dis l2 tagstore          */
+cache_generic_t         g_dis_l1;           /* dis l1 data cache        */
+cache_generic_t         g_dis_l2;           /* dis l2 data cache        */
+cache_tagstore_t        g_dis_l1_ts;        /* dis l1 tagstore          */
+cache_tagstore_t        g_dis_l2_ts;        /* dis l2 tagstore          */
 
 
 /* dis init routine */
 static void
 dis_init(struct dis_input *dis)
 {
+    uint16_t i = 0;
+
     if (!dis) {
         dis_assert(0);
         goto exit;
@@ -49,11 +51,16 @@ dis_init(struct dis_input *dis)
     dis->l1 = &g_dis_l1;
     dis->l2 = &g_dis_l2;
 
+    /* Allocate memory for rmt and set the ready bit for all regs. */
+    for (i = 0; i < REG_TOTAL; ++i) {
+        dis->rmt[i] = (struct dis_reg_data *) calloc(1, sizeof(*dis->rmt[i]));
+        dis->rmt[i]->rnum = i;
+        dis->rmt[i]->ready = TRUE;
+    }
+
+    /* Allocate memory for all the lists. */
     dis->list_inst = (struct dis_inst_list *)
                             calloc(1, sizeof(*dis->list_inst));
-    dis->list_inst->list = 0;
-    dis->list_inst->len = 0;
-
     dis->list_disp = (struct dis_disp_list *)
                             calloc(1, sizeof(*dis->list_disp));
 
@@ -65,8 +72,14 @@ exit:
 static void
 dis_cleanup(struct dis_input *dis)
 {
+    uint16_t                i = 0;
     struct dis_inst_node    *iter = NULL;
     struct dis_inst_node    *tmp = NULL;
+
+    for (i = 0; i < REG_TOTAL; ++i) {
+        free(dis->rmt[i]);
+        dis->rmt[i] = NULL;
+    }
 
     if (dis->list_inst) {
         DL_FOREACH_SAFE(dis->list_inst->list, iter, tmp) {

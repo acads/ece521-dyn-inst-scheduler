@@ -51,6 +51,7 @@ dis_dispatch_push_inst(struct dis_input *dis, struct dis_inst_node *inst)
 bool
 dis_dispatch(struct dis_input *dis)
 {
+    struct dis_inst_node    *tmp = NULL;
     struct dis_inst_node    *iter = NULL;
     struct dis_inst_node    *list = NULL;
 
@@ -61,6 +62,10 @@ dis_dispatch(struct dis_input *dis)
     list = dis->list_disp->list;
 
     /* First move insts in ID state to the issue list. */
+    DL_FOREACH_SAFE(list, iter, tmp) {
+        if (dis_can_push_on_list(dis, LIST_ISSUE)) {
+        }
+    }
 
     /* Now, move the inst in IF state to ID state. */
     DL_FOREACH(list, iter) {
