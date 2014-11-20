@@ -42,8 +42,7 @@
 
 typedef enum inst_state__ {
     STATE_IF,   /* Instruction fetch        */
-    STATE_ID,   /* Instruction decode       */
-    STATE_DP,   /* Instruction dispatch     */
+    STATE_ID,   /* Instruction dispatch     */
     STATE_IS,   /* Instruction issue        */
     STATE_EX,   /* Instruction execture     */
     STATE_WB,   /* Instruction writeback    */
@@ -75,6 +74,11 @@ struct dis_disp_list {
 struct dis_inst_list {
     struct dis_inst_node    *list;  /* actual inst. doubly ll   */
     uint32_t                len;    /* length of the list       */
+};
+
+struct dis_list {
+    struct dis_inst_node    *list;
+    uint32_t                len;
 };
 
 /* Instruction data */
@@ -109,11 +113,12 @@ struct dis_input {
     char                        tracefile[MAX_FILE_NAME_LEN + 1];
 
     /* registers */
-    struct dis_reg_data         *rmt[REG_TOTAL];       /* register data/rmt        */
+    struct dis_reg_data         *rmt[REG_TOTAL];       /* register data/rmt */
 
     /* pipeline lists */
-    struct dis_inst_list        *list_inst; /* inst. list               */
-    struct dis_disp_list        *list_disp; /* dispatch list            */
+    struct dis_inst_list        *list_inst;     /* inst. list               */
+    struct dis_disp_list        *list_disp;     /* dispatch list            */
+    struct dis_list             *list_issue;    /* issue list               */
 };
 
 

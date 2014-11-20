@@ -40,6 +40,9 @@ dis_inst_list_increment_len(struct dis_input *dis, uint8_t list)
     case LIST_DISP:
         dis->list_disp->len += 1;
         return;
+    case LIST_ISSUE:
+        dis->list_issue->len += 1;
+        return;
     default:
         dis_assert(0);
         return;
@@ -58,7 +61,11 @@ dis_inst_list_decrement_len(struct dis_input *dis, uint8_t list)
         return;
     case LIST_DISP:
         if (dis->list_disp->len)
-            dis->list_disp->len += 1;
+            dis->list_disp->len -= 1;
+        return;
+    case LIST_ISSUE:
+        if (dis->list_issue->len)
+            dis->list_issue->len -= 1;
         return;
     default:
         dis_assert(0);
@@ -76,8 +83,9 @@ dis_inst_list_get_len(struct dis_input *dis, uint8_t list)
         return dis->list_inst->len;
     case LIST_DISP:
         return dis->list_disp->len;
+    case LIST_ISSUE:
+        return dis->list_issue->len;
     default:
-        dprint_err("%u\n", list);
         dis_assert(0);
         return 0;
     }
@@ -102,7 +110,7 @@ dis_is_list_full(struct dis_input *dis, uint8_t list)
 }
 
 
-/* Checks whether or not inst can be added to dispatch list. */
+/* Checks whether an inst could be added to the given list. */
 static inline bool
 dis_can_push_on_list(struct dis_input *dis, uint8_t list)
 {
@@ -111,6 +119,8 @@ dis_can_push_on_list(struct dis_input *dis, uint8_t list)
         return !dis_is_list_full(dis, LIST_INST);
     case LIST_DISP:
         return !dis_is_list_full(dis, LIST_DISP);
+    case LIST_ISSUE:
+        return !dis_is_list_full(dis, LIST_ISSUE);
     default:
         dis_assert(0);
         return FALSE;

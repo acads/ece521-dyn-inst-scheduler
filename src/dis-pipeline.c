@@ -22,9 +22,27 @@
 #include "dis-pipeline-pri.h"
 #include "utlist.h"
 
+/* Put the give inst on issue list, provided the list has room. */
+static bool
+dis_issue_push_inst(struct dis_input *dis, struct dis_inst_node *inst)
+{
+    if (dis_can_push_on_list(dis, LIST_ISSUE)) {
+        struct dis_inst_node    *node = NULL;
+
+        node = (struct dis_inst_node *) calloc(1, sizeof(*node));
+        node->data = inst->data;
+
+        DL_APPEND(dis->list_issue->list, node);
+        dis_inst_list_increment_len(dis, LIST_ISSUE);
+        dprint_info("inst %u, --> issue list, len %u\n",
+                node->data->num, dis_inst_list_get_len(dis, LIST_ISSUE));
+        return TRUE;
+    }
+    return FALSE;
+}
 
 /* Puts the inst on the dispatch list, provided the list has room. */
-static inline bool
+static bool
 dis_dispatch_push_inst(struct dis_input *dis, struct dis_inst_node *inst)
 {
     if (dis_can_push_on_list(dis, LIST_DISP)) {
@@ -35,9 +53,8 @@ dis_dispatch_push_inst(struct dis_input *dis, struct dis_inst_node *inst)
 
         DL_APPEND(dis->list_disp->list, node);
         dis_inst_list_increment_len(dis, LIST_DISP);
-        dprint_info("inst %u, pc 0x%x pushed onto dispatch list, len %u\n",
-                node->data->num, node->data->pc,
-                dis_inst_list_get_len(dis, LIST_DISP));
+        dprint_info("inst %u, --> dispatch list, len %u\n",
+                node->data->num, dis_inst_list_get_len(dis, LIST_DISP));
         return TRUE;
     }
     return FALSE;
@@ -61,17 +78,44 @@ dis_dispatch(struct dis_input *dis)
     }
     list = dis->list_disp->list;
 
-    /* First move insts in ID state to the issue list. */
+    /* First move as many inst as possile from ID to IS, then onto issue
+     * list and remove them from dispatch list.
+     */
     DL_FOREACH_SAFE(list, iter, tmp) {
+        if (STATE_ID != dis_inst_get_state(iter))
+            continue;
+
         if (dis_can_push_on_list(dis, LIST_ISSUE)) {
+            DL_DELETE(dis->list_disp->list, iter);
+            dis_inst_list_decrement_len(dis, LIST_DISP);
+            dprint_info("inst %u, <-- dispatch list, len %u\n",
+                iter->data->num, dis_inst_list_get_len(dis, LIST_DISP));
+
+            dis_inst_set_state(iter, STATE_IS);
+            iter->data->cycle[STATE_IS] = dis_get_cycle_num();
+            dprint_info("inst %u, ID-->IS in cycle %u, dispatch list\n",
+                    iter->data->num, dis_get_cycle_num());
+            dis_issue_push_inst(dis, iter);
         }
     }
 
     /* Now, move the inst in IF state to ID state. */
     DL_FOREACH(list, iter) {
-        if (STATE_IF == dis_inst_get_state(iter))
-            dis_inst_set_state(iter, STATE_ID);
+        if (STATE_IF != dis_inst_get_state(iter))
+            continue;
+
+        dis_inst_set_state(iter, STATE_ID);
+        iter->data->cycle[STATE_ID] = dis_get_cycle_num();
+        dprint_info("inst %u, IF-->ID in cycle %u, dispatch list\n",
+                iter->data->num, dis_get_cycle_num());
     }
+
+    {
+        int count = 0;
+        DL_COUNT(list, tmp, count);
+        dprint("dispatch count %d\n", count);
+    }
+    dis_print_list(dis, LIST_DISP);
 
     return TRUE;
 
@@ -131,24 +175,30 @@ dis_fetch(struct dis_input *dis)
         new_inst->sreg1 = (REG_NO_VALUE == sreg1) ? REG_INVALID_VALUE : sreg1;
         new_inst->sreg2 = (REG_NO_VALUE == sreg2) ? REG_INVALID_VALUE : sreg2;
         new_inst->mem_addr = mem_addr;
-        new_inst->cycle[STATE_IF] = dis_get_cycle_num();
+
         new_inst_node = (struct dis_inst_node *) 
                             calloc(1, sizeof(*new_inst_node));
         new_inst_node->data = new_inst;
         dis_inst_set_state(new_inst_node, STATE_IF);
+        new_inst->cycle[STATE_IF] = dis_get_cycle_num();
+        dprint_info("inst %u, 0-->IF in cycle %u, inst list\n",
+                    new_inst->num, dis_get_cycle_num());
 
         DL_APPEND(dis->list_inst->list, new_inst_node);
         dis_inst_list_increment_len(dis, LIST_INST);
-        dprint_info("inst %u, pc %x appended to inst list, list len %u\n", 
-                new_inst->num, pc, dis_inst_list_get_len(dis, LIST_INST));
+        dprint_info("inst %u, --> inst list, len %u\n",
+                new_inst->num, dis_inst_list_get_len(dis, LIST_INST));
     }
 
     /* Put the inst on the dispatch list and sort it based on inum. */
     DL_FOREACH(dis->list_inst->list, iter) {
+        if (STATE_IF != dis_inst_get_state(iter))
+            continue;
+
         if (!dis_dispatch_push_inst(dis, iter))
             break;
     }
-    DL_SORT(dis->list_inst->list, dis_cb_cmp);
+    DL_SORT(dis->list_disp->list, dis_cb_cmp);
 
     return TRUE;
 

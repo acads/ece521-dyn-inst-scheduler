@@ -21,7 +21,7 @@
 #include "dis-print.h"
 #include "utlist.h"
 
-const char *inst_states[] = {"if", "id", "dp", "is", "ex", "wb"};
+const char *inst_states[] = {"if", "id", "is", "ex", "wb"};
 
 void
 dis_print_list(struct dis_input *dis, uint8_t list_type)
@@ -29,27 +29,35 @@ dis_print_list(struct dis_input *dis, uint8_t list_type)
     int16_t                 dreg = 0;
     int16_t                 sreg1 = 0;
     int16_t                 sreg2 = 0;
+    uint16_t                i = 0;
     struct dis_inst_node    *iter = NULL;
     struct dis_inst_node    *list = NULL;
 
     switch (list_type) {
-        case LIST_INST:
-            dprint("\n");
-            dprint("inst list\n");
-            dprint("---------\n");
-            list = dis->list_inst->list;
-            break;
+    case LIST_INST:
+        dprint("\n");
+        dprint("inst list\n");
+        dprint("---------\n");
+        list = dis->list_inst->list;
+        break;
 
-        case LIST_DISP:
-            dprint("\n");
-            dprint("disp list\n");
-            dprint("---------\n");
-            list = dis->list_disp->list;
-            break;
+    case LIST_DISP:
+        dprint("\n");
+        dprint("disp list\n");
+        dprint("---------\n");
+        list = dis->list_disp->list;
+        break;
 
-        default:
-            dis_assert(0);
-            goto exit;
+    case LIST_ISSUE:
+        dprint("\n");
+        dprint("issue list\n");
+        dprint("----------\n");
+        list = dis->list_issue->list;
+        break;
+
+    default:
+        dis_assert(0);
+        goto exit;
     }
 
     DL_FOREACH(list, iter) {
@@ -61,9 +69,13 @@ dis_print_list(struct dis_input *dis, uint8_t list_type)
             REG_NO_VALUE : iter->data->sreg2;
 
         dprint("inum %5u, pc 0x%x, dreg %3d, sreg1 %3d, sreg2 %3d, "    \
-                "mem_addr 0x%08x, state %s\n",
+                "mem_addr 0x%08x, state %s, ",
                 iter->data->num, iter->data->pc, dreg, sreg1, sreg2,
                 iter->data->mem_addr, inst_states[iter->data->state]);
+        dprint("cycle ");
+        for (i = 0; i < STATE_MAX; ++i)
+            dprint("%u ", iter->data->cycle[i]);
+        dprint("\n");
     }
 
 exit:
