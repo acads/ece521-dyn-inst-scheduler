@@ -11,6 +11,8 @@
 #ifndef DIS_PIPELINE_PRI_H_
 #define DIS_PIPELINE_PRI_H_
 
+extern uint32_t g_reg_name;
+
 /* Inline functions */
 /* Set the given state to the given inst. */
 static inline void
@@ -125,6 +127,29 @@ dis_can_push_on_list(struct dis_input *dis, uint8_t list)
         dis_assert(0);
         return FALSE;
     }
+}
+
+
+/* Returns a new register name. */
+static inline uint32_t
+dis_get_new_reg_name(void)
+{
+    return ++g_reg_name;
+}
+
+
+/* Assigns a new name to the register and clears the ready bit. */
+static inline void
+dis_rename_reg(struct dis_input *dis, uint16_t regno)
+{
+    if (!dis_is_reg_valid(regno)) {
+        dis_assert(0);
+        return;
+    }
+
+    dis->rmt[regno]->name = dis_get_new_reg_name();
+    dis->rmt[regno]->ready = 0;
+    dis->rmt[regno]->cycle = dis_get_cycle_num();
 }
 
 

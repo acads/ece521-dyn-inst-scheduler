@@ -19,6 +19,7 @@
 #include "dis.h"
 #include "dis-utils.h"
 #include "dis-print.h"
+#include "dis-pipeline.h"
 #include "utlist.h"
 
 const char *inst_states[] = {"if", "id", "is", "ex", "wb"};
@@ -81,6 +82,33 @@ dis_print_list(struct dis_input *dis, uint8_t list_type)
 exit:
     return;
 }
+
+
+static inline void
+dis_print_rmt_entry(struct dis_input *dis, uint16_t regno)
+{
+    dprint("reg %3u, name %5u, ready %u, cycle %5u\n",
+        regno, dis_get_reg_name(dis, regno), dis_is_reg_ready(dis, regno),
+        dis_get_reg_cycle(dis, regno));
+    return;
+}
+
+
+void
+dis_print_rmt(struct dis_input *dis, uint16_t regno)
+{
+    if (dis_is_reg_valid(regno)) {
+        /* Just print data for the given register alone. */
+        dis_print_rmt_entry(dis, regno);
+    } else {
+        /* Print the whole table. */
+        uint16_t i = 0;
+        for (i = 0; i <= REG_MAX_VALUE; ++i)
+            dis_print_rmt_entry(dis, i);
+    }
+    return;
+}
+
 
 void
 dis_print_input_data(struct dis_input *dis)

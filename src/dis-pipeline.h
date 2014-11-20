@@ -44,6 +44,43 @@ dis_get_inst_num(void)
 }
 
 
+/* Checks whether the given register is valid (TRUE) or not (FALSE). */
+static inline bool
+dis_is_reg_valid(uint16_t regno)
+{
+    return (((regno >= REG_MIN_VALUE) && (regno <= REG_MAX_VALUE))
+            ? TRUE : FALSE);
+}
+
+
+/* Checks whether the ready bit is set (TRUE) or not (FALSE) for inst. */
+static inline bool
+dis_is_reg_ready(struct dis_input *dis, uint16_t regno)
+{
+    return (((dis_is_reg_valid(regno)) && (dis->rmt[regno]->ready))
+            ? TRUE : FALSE);
+}
+
+
+/* Returns the registered renamed name. */
+static inline uint32_t
+dis_get_reg_name(struct dis_input *dis, uint16_t regno)
+{
+    if (dis_is_reg_valid(regno))
+        return dis->rmt[regno]->name;
+    return 0;
+}
+
+
+/* Returns the cycle # when the reg was renamed last. */
+static inline uint32_t
+dis_get_reg_cycle(struct dis_input *dis, uint16_t regno)
+{
+    if (dis_is_reg_valid(regno))
+        return dis->rmt[regno]->cycle;
+    return 0;
+}
+
 
 /* Function declarations */
 bool

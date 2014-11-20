@@ -16,6 +16,10 @@
 /* Function declarations */
 void
 dis_print_list(struct dis_input *dis, uint8_t list_type);
+
+void
+dis_print_rmt(struct dis_input *dis, uint16_t regno);
+
 void
 dis_print_input_data(struct dis_input *dis);
 

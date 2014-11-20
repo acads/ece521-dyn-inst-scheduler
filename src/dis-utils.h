@@ -16,17 +16,19 @@
 #include "dis.h"
 
 #define dprint(str, ...) printf(str, ##__VA_ARGS__)
-#ifdef DBG_ON                       
+#ifdef DBG_ON
+#define dprint_dbg(str, ...)    printf(str, ##__VA_ARGS__)
 #define dprint_info(str, ...)           \
-    printf("bp_info: %s %u# " str,      \
+    printf("dis_info: %s %u# " str,     \
             __func__, __LINE__, ##__VA_ARGS__)
 #define dprint_warn(str, ...)           \
-    printf("bp_warn: %s %s %u# " str,   \
+    printf("dis_warn: %s %s %u# " str,  \
             __FILE__, __func__, __LINE__, ##__VA_ARGS__)                       
 #define dprint_err(str, ...)            \
-    printf("bp_err: %s %s %u# " str,    \
+    printf("dis_err: %s %s %u# " str,   \
             __FILE__, __func__, __LINE__, ##__VA_ARGS__)
 #else
+#define dprint_dbg(str, ...)
 #define dprint_info(str, ...)
 #define dprint_warn(str, ...)
 #define dprint_err(str, ...)

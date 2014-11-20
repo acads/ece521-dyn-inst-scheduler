@@ -22,6 +22,9 @@
 #include "dis-pipeline-pri.h"
 #include "utlist.h"
 
+/* Private globals. */
+uint32_t    g_reg_name = 0;     /* running register name for renames    */
+
 /* Put the give inst on issue list, provided the list has room. */
 static bool
 dis_issue_push_inst(struct dis_input *dis, struct dis_inst_node *inst)
@@ -40,6 +43,45 @@ dis_issue_push_inst(struct dis_input *dis, struct dis_inst_node *inst)
     }
     return FALSE;
 }
+
+
+/* Renames the registers in the inst as required. */
+static void
+dis_dispatch_rename_regs(struct dis_input *dis, struct dis_inst_node *inst)
+{
+    /* Register rename process is as follows:
+     *  1. For a valid src1 (i.e., register is not -1), lookup the RMT.
+     *          - If ready bit is set, just move on. No renaming.
+     *          - If ready bit is not set, assign a unique name to the reg in
+     *            the RMT and clear the ready bit.
+     *  2. For dst regs, no RMT lookups. As long as the reg is valid, rename
+     *     it by getting a new name and clear the ready bit.
+     */
+
+    if (dis_is_reg_valid(inst->data->sreg1) &&
+            !dis_is_reg_ready(dis, inst->data->sreg1)) {
+        dis_rename_reg(dis, inst->data->sreg1);
+
+        dprint_info("inst %u, sreg1 rename, ", inst->data->num);
+        dis_print_rmt(dis, inst->data->sreg1);
+    }
+
+    if (dis_is_reg_valid(inst->data->sreg2) &&
+            !dis_is_reg_ready(dis, inst->data->sreg2)) {
+        dis_rename_reg(dis, inst->data->sreg2);
+
+        dprint_info("inst %u, sreg2 rename, ", inst->data->num);
+        dis_print_rmt(dis, inst->data->sreg2);
+    }
+
+    if (dis_is_reg_valid(inst->data->dreg)) {
+        dis_rename_reg(dis, inst->data->dreg);
+
+        dprint_info("inst %u, dreg rename, ", inst->data->num);
+        dis_print_rmt(dis, inst->data->dreg);
+    }
+}
+
 
 /* Puts the inst on the dispatch list, provided the list has room. */
 static bool
@@ -86,16 +128,23 @@ dis_dispatch(struct dis_input *dis)
             continue;
 
         if (dis_can_push_on_list(dis, LIST_ISSUE)) {
-            DL_DELETE(dis->list_disp->list, iter);
-            dis_inst_list_decrement_len(dis, LIST_DISP);
-            dprint_info("inst %u, <-- dispatch list, len %u\n",
-                iter->data->num, dis_inst_list_get_len(dis, LIST_DISP));
-
             dis_inst_set_state(iter, STATE_IS);
             iter->data->cycle[STATE_IS] = dis_get_cycle_num();
             dprint_info("inst %u, ID-->IS in cycle %u, dispatch list\n",
                     iter->data->num, dis_get_cycle_num());
             dis_issue_push_inst(dis, iter);
+
+            /* Now, rename the regs in this new inst. */
+            dis_dispatch_rename_regs(dis, iter);
+
+            /* Finally, remove this from this inst from dispatch list. */
+            DL_DELETE(dis->list_disp->list, iter);
+            dis_inst_list_decrement_len(dis, LIST_DISP);
+            dprint_info("inst %u, <-- dispatch list, len %u\n",
+                iter->data->num, dis_inst_list_get_len(dis, LIST_DISP));
+
+            /* DAN_TODO: Fix this. */
+            //free(iter);
         }
     }
 
@@ -110,12 +159,8 @@ dis_dispatch(struct dis_input *dis)
                 iter->data->num, dis_get_cycle_num());
     }
 
-    {
-        int count = 0;
-        DL_COUNT(list, tmp, count);
-        dprint("dispatch count %d\n", count);
-    }
     dis_print_list(dis, LIST_DISP);
+    dis_print_rmt(dis, REG_INVALID_VALUE);
 
     return TRUE;
 
@@ -133,7 +178,7 @@ bool
 dis_fetch(struct dis_input *dis)
 {
     char newline = '\n';
-    int         fscanf_rv = 0;
+    int  fscanf_rv = 0;
     int32_t     dreg = 0;
     int32_t     sreg1 = 0;
     int32_t     sreg2 = 0;

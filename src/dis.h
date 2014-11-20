@@ -87,9 +87,9 @@ struct dis_inst_data {
     uint8_t     state;              /* fetch/decode/dispatch... */
     uint32_t    pc;                 /* pc as given in trace     */
     uint8_t     type;               /* inst type - 0, 1, 2      */
-    uint8_t     dreg;               /* dst register             */
-    uint8_t     sreg1;              /* src register 1           */
-    uint8_t     sreg2;              /* src register 2           */
+    uint16_t    dreg;               /* dst register             */
+    uint16_t    sreg1;              /* src register 1           */
+    uint16_t    sreg2;              /* src register 2           */
     uint32_t    mem_addr;           /* mem address in trace     */
     uint32_t    cycle[STATE_MAX];   /* state-cycle transition   */
 

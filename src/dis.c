@@ -136,7 +136,9 @@ dis_parse_tracefile(struct dis_input *dis)
     }
 
     do {
-        dprint_info("\n\ncurr cycle %u\n", dis_get_cycle_num());
+        dprint_dbg("\n\n");
+        dprint_dbg("curr cycle %u\n", dis_get_cycle_num());
+        dprint_dbg("--------------\n");
 
         /* Dispatch stage. */
         dis_dispatch(dis);
