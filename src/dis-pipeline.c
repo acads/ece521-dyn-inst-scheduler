@@ -19,6 +19,7 @@
 #include "dis-utils.h"
 #include "dis-print.h"
 #include "dis-pipeline.h"
+#include "dis-pipeline-pri.h"
 #include "utlist.h"
 
 
@@ -137,11 +138,12 @@ dis_fetch(struct dis_input *dis)
                 new_inst->num, pc, dis_inst_list_get_len(dis, LIST_INST));
     }
 
-    /* Put the inst on the dispatch list. */
+    /* Put the inst on the dispatch list and sort it based on inum. */
     DL_FOREACH(dis->list_inst->list, iter) {
         if (!dis_dispatch_push_inst(dis, iter))
             break;
     }
+    DL_SORT(dis->list_inst->list, dis_cb_cmp);
 
     return TRUE;
 
