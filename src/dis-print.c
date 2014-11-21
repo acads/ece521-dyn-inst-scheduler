@@ -22,7 +22,35 @@
 #include "dis-pipeline.h"
 #include "utlist.h"
 
-const char *inst_states[] = {"if", "id", "is", "ex", "wb"};
+const char *inst_states[] = {"IF", "ID", "IS", "EX", "WB"};
+
+
+/*
+ * Pretty prints the stats (inum, type, stage start cycle and duration) of
+ * the given inst in TAs format.
+ */
+inline void
+dis_print_inst_stats(struct dis_input *dis, struct dis_inst_node *inst)
+{
+    int16_t sreg1, sreg2, dreg;
+    struct dis_inst_data *data = inst->data;
+
+    sreg1 = (dis_is_reg_valid(data->sreg1) ? data->sreg1 : -1);
+    sreg2 = (dis_is_reg_valid(data->sreg2) ? data->sreg2 : -1);
+    dreg = (dis_is_reg_valid(data->dreg) ? data->dreg : -1);
+
+    dprint("%u fu{%u} src{%d,%d} dst{%d} ",
+        (data->num - 1), data->type, sreg1, sreg2, dreg);
+    dprint("IF{%u,%u} ID{%u,%u} IS{%u,%u} EX{%u,%u} WB{%u,%u}\n",
+        data->cycle[STATE_IF], data->cycle[STATE_ID] - data->cycle[STATE_IF],
+        data->cycle[STATE_ID], data->cycle[STATE_IS] - data->cycle[STATE_ID],
+        data->cycle[STATE_IS], data->cycle[STATE_EX] - data->cycle[STATE_IS],
+        data->cycle[STATE_EX], data->cycle[STATE_WB] - data->cycle[STATE_EX],
+        data->cycle[STATE_WB], 1);
+
+    return;
+}
+
 
 void
 dis_print_list(struct dis_input *dis, uint8_t list_type)
@@ -56,6 +84,13 @@ dis_print_list(struct dis_input *dis, uint8_t list_type)
         list = dis->list_issue->list;
         break;
 
+    case LIST_EXEC:
+        dprint("\n");
+        dprint("exec list\n");
+        dprint("---------\n");
+        list = dis->list_exec->list;
+        break;
+
     default:
         dis_assert(0);
         goto exit;
@@ -78,6 +113,7 @@ dis_print_list(struct dis_input *dis, uint8_t list_type)
             dprint("%u ", iter->data->cycle[i]);
         dprint("\n");
     }
+    dprint("done printing list\n\n");
 
 exit:
     return;
@@ -103,6 +139,9 @@ dis_print_rmt(struct dis_input *dis, uint16_t regno)
     } else {
         /* Print the whole table. */
         uint16_t i = 0;
+        dprint_dbg("\n\n");
+        dprint_dbg("register remap table\n");
+        dprint_dbg("--------------------\n");
         for (i = 0; i <= REG_MAX_VALUE; ++i)
             dis_print_rmt_entry(dis, i);
     }

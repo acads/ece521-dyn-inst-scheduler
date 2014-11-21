@@ -25,6 +25,104 @@
 /* Private globals. */
 uint32_t    g_reg_name = 0;     /* running register name for renames    */
 
+static inline bool
+dis_execute_is_over(struct dis_input *dis, struct dis_inst_node *inst)
+{
+    uint8_t latency = 0;
+
+    switch (inst->data->type) {
+    case TYPE_0:
+        latency = 1;
+        break;
+    case TYPE_1:
+        latency = 2;
+        break;
+    case TYPE_2:
+        latency = 5;
+        break;
+    default:
+        dis_assert(0);
+        goto error_exit;
+    }
+
+    if (dis_get_cycle_num() == (inst->data->cycle[STATE_EX] + latency))
+        return TRUE;
+
+error_exit:
+    return FALSE;
+}
+
+
+/* Put the give inst on exec list, provided the list has room. */
+static bool
+dis_exec_push_inst(struct dis_input *dis, struct dis_inst_node *inst)
+{
+    if (dis_can_push_on_list(dis, LIST_EXEC)) {
+        struct dis_inst_node *node = NULL;
+
+        node = (struct dis_inst_node *) calloc(1, sizeof(*node));
+        node->data = inst->data;
+
+        DL_APPEND(dis->list_exec->list, node);
+        dis_inst_list_increment_len(dis, LIST_EXEC);
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+
+/*
+ * Execute stage.
+ * We don't do any exection per se; rather we jsut wait for # of cycles based
+ * on the type of the inst.
+ */
+bool
+dis_execute(struct dis_input *dis)
+{
+    struct dis_inst_node    *tmp = NULL;
+    struct dis_inst_node    *iter = NULL;
+
+    if (!dis) {
+        dis_assert(0);
+        goto error_exit;
+    }
+
+    DL_FOREACH_SAFE(dis->list_exec->list, iter, tmp) {
+        if (dis_execute_is_over(dis, iter)) {
+            /* Done with this inst. Change state to WB and remove it from the
+             * exec list.
+             */
+            dis_inst_set_state(iter, STATE_WB);
+            dis_inst_set_cycle(iter, STATE_WB);
+
+            DL_DELETE(dis->list_exec->list, iter);
+            dis_inst_list_decrement_len(dis, LIST_EXEC);
+
+            dprint_info("inst %u, EX-->WB, exec(%u)-->inst(%u), cycle %u\n",
+                    iter->data->num, dis_inst_list_get_len(dis, LIST_EXEC),
+                    dis_inst_list_get_len(dis, LIST_INST),
+                    dis_get_cycle_num());
+
+            /* Update dreg entry's ready bit in RMT. */
+            dis_reg_set_ready_bit(dis, iter->data->dreg);
+
+            /* DAN_TODO: Fix this. */
+            //free(iter);
+        }
+    }
+
+#ifdef DBG_ON
+    dis_print_list(dis, LIST_EXEC);
+#endif /* DBG_ON */
+
+    return TRUE;
+
+error_exit:
+    return FALSE;
+}
+
+
 /* Put the give inst on issue list, provided the list has room. */
 static bool
 dis_issue_push_inst(struct dis_input *dis, struct dis_inst_node *inst)
@@ -37,10 +135,89 @@ dis_issue_push_inst(struct dis_input *dis, struct dis_inst_node *inst)
 
         DL_APPEND(dis->list_issue->list, node);
         dis_inst_list_increment_len(dis, LIST_ISSUE);
-        dprint_info("inst %u, --> issue list, len %u\n",
-                node->data->num, dis_inst_list_get_len(dis, LIST_ISSUE));
         return TRUE;
     }
+    return FALSE;
+}
+
+
+/*
+ * Checks whether all the operands are ready (TRUE) or not (FALSE) for a
+ * given inst.
+ */
+static inline bool
+dis_issue_are_operands_ready(struct dis_input *dis, struct dis_inst_node *inst)
+{
+    return (dis_is_reg_ready(dis, inst->data->sreg1) &&
+                dis_is_reg_ready(dis, inst->data->sreg2));
+}
+
+
+/*
+ * Issue stage of the pipeline.
+ * Moves the instruction to exectution stage once all of its operands are
+ * ready. It can move upto 'n' instrctions or as long as the exection
+ * stage can accept newer instrctions.
+ */
+bool
+dis_issue(struct dis_input *dis)
+{
+    struct dis_inst_node    *tmp = NULL;
+    struct dis_inst_node    *iter = NULL;
+    struct dis_inst_node    *list = NULL;
+
+    if (!dis) {
+        dis_assert(0);
+        goto error_exit;
+    }
+    list = dis->list_issue->list;
+
+    /* Issue list processing outline:
+     *  1. For each inst in the issue list, check if all of their operands are
+     *     ready and if the inst can be pushed onto the exec list (room
+     *     availability in exec list). If so, do the following:
+     *          - Change the state of the inst to EX.
+     *          - Update the state-cycle history map of the inst.
+     *          - Push the inst to the exec list and increment its length.
+     *          - Remove the inst from the issue list and decrement its length.
+     *          - Continue with the next inst.
+     */
+    DL_FOREACH_SAFE(list, iter, tmp) {
+        if (STATE_IS != dis_inst_get_state(iter)) {
+            dis_assert(0);
+            continue;
+        }
+
+        if (dis_can_push_on_list(dis, LIST_EXEC) &&
+                dis_issue_are_operands_ready(dis, iter)) {
+            /* Change states and push the inst onto exec list. */
+            dis_inst_set_state(iter, STATE_EX);
+            dis_inst_set_cycle(iter, STATE_EX);
+            dis_exec_push_inst(dis, iter);
+
+            /* Delete the inst from issue list. */
+            DL_DELETE(dis->list_issue->list, iter);
+            dis_inst_list_decrement_len(dis, LIST_ISSUE);
+
+            dprint_info("inst %u, IS-->EX, issue(%u)-->exec(%u), cycle %u\n",
+                    iter->data->num, dis_inst_list_get_len(dis, LIST_ISSUE),
+                    dis_inst_list_get_len(dis, LIST_EXEC),
+                    dis_get_cycle_num());
+
+            /* DAN_TODO: Fix this. */
+            //free(iter);
+        }
+    }
+
+    /* Sort the exec list in the order of inst in trce file. */
+    DL_SORT(dis->list_exec->list, dis_cb_cmp);
+
+#ifdef DBG_ON
+    dis_print_list(dis, LIST_ISSUE);
+#endif /* DBG_ON */
+    return TRUE;
+
+error_exit:
     return FALSE;
 }
 
@@ -95,8 +272,6 @@ dis_dispatch_push_inst(struct dis_input *dis, struct dis_inst_node *inst)
 
         DL_APPEND(dis->list_disp->list, node);
         dis_inst_list_increment_len(dis, LIST_DISP);
-        dprint_info("inst %u, --> dispatch list, len %u\n",
-                node->data->num, dis_inst_list_get_len(dis, LIST_DISP));
         return TRUE;
     }
     return FALSE;
@@ -130,8 +305,6 @@ dis_dispatch(struct dis_input *dis)
         if (dis_can_push_on_list(dis, LIST_ISSUE)) {
             dis_inst_set_state(iter, STATE_IS);
             iter->data->cycle[STATE_IS] = dis_get_cycle_num();
-            dprint_info("inst %u, ID-->IS in cycle %u, dispatch list\n",
-                    iter->data->num, dis_get_cycle_num());
             dis_issue_push_inst(dis, iter);
 
             /* Now, rename the regs in this new inst. */
@@ -140,13 +313,19 @@ dis_dispatch(struct dis_input *dis)
             /* Finally, remove this from this inst from dispatch list. */
             DL_DELETE(dis->list_disp->list, iter);
             dis_inst_list_decrement_len(dis, LIST_DISP);
-            dprint_info("inst %u, <-- dispatch list, len %u\n",
-                iter->data->num, dis_inst_list_get_len(dis, LIST_DISP));
+
+            dprint_info("inst %u, ID-->IS, disp(%u)-->issue(%u), cycle %u\n",
+                    iter->data->num, dis_inst_list_get_len(dis, LIST_DISP),
+                    dis_inst_list_get_len(dis, LIST_ISSUE),
+                    dis_get_cycle_num());
 
             /* DAN_TODO: Fix this. */
             //free(iter);
         }
     }
+
+    /* Sort the issue list in the order of inst in trce file. */
+    DL_SORT(dis->list_issue->list, dis_cb_cmp);
 
     /* Now, move the inst in IF state to ID state. */
     DL_FOREACH(list, iter) {
@@ -155,13 +334,15 @@ dis_dispatch(struct dis_input *dis)
 
         dis_inst_set_state(iter, STATE_ID);
         iter->data->cycle[STATE_ID] = dis_get_cycle_num();
-        dprint_info("inst %u, IF-->ID in cycle %u, dispatch list\n",
-                iter->data->num, dis_get_cycle_num());
+
+        dprint_info("inst %u, IF-->ID, disp(%u)-->disp(%u), cycle %u\n",
+                iter->data->num, dis_inst_list_get_len(dis, LIST_DISP),
+                dis_inst_list_get_len(dis, LIST_DISP), dis_get_cycle_num());
     }
 
+#ifdef DBG_ON
     dis_print_list(dis, LIST_DISP);
-    dis_print_rmt(dis, REG_INVALID_VALUE);
-
+#endif /* DBG_ON */
     return TRUE;
 
 error_exit:
@@ -226,13 +407,13 @@ dis_fetch(struct dis_input *dis)
         new_inst_node->data = new_inst;
         dis_inst_set_state(new_inst_node, STATE_IF);
         new_inst->cycle[STATE_IF] = dis_get_cycle_num();
-        dprint_info("inst %u, 0-->IF in cycle %u, inst list\n",
-                    new_inst->num, dis_get_cycle_num());
 
         DL_APPEND(dis->list_inst->list, new_inst_node);
         dis_inst_list_increment_len(dis, LIST_INST);
-        dprint_info("inst %u, --> inst list, len %u\n",
-                new_inst->num, dis_inst_list_get_len(dis, LIST_INST));
+
+        dprint_info("inst %u, NA-->IF, trace(%u)-->inst(%u), cycle %u\n",
+                new_inst->num, 0, dis_inst_list_get_len(dis, LIST_INST),
+                dis_get_cycle_num());
     }
 
     /* Put the inst on the dispatch list and sort it based on inum. */
@@ -240,8 +421,13 @@ dis_fetch(struct dis_input *dis)
         if (STATE_IF != dis_inst_get_state(iter))
             continue;
 
-        if (!dis_dispatch_push_inst(dis, iter))
+        if (dis_dispatch_push_inst(dis, iter)) {
+            dprint_info("inst %u, IF-->IF, inst(%u)-->disp(%u), cycle %u\n",
+                new_inst->num, dis_inst_list_get_len(dis, LIST_INST),
+                dis_inst_list_get_len(dis, LIST_DISP), dis_get_cycle_num());
+        } else {
             break;
+        }
     }
     DL_SORT(dis->list_disp->list, dis_cb_cmp);
 

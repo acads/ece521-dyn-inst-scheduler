@@ -23,5 +23,8 @@ dis_print_rmt(struct dis_input *dis, uint16_t regno);
 void
 dis_print_input_data(struct dis_input *dis);
 
+inline void
+dis_print_inst_stats(struct dis_input *dis, struct dis_inst_node *inst);
+
 #endif /* DIS_PRINT_H_ */
 

@@ -30,6 +30,13 @@ dis_inst_get_state(struct dis_inst_node *inst_node)
     return inst_node->data->state;
 }
 
+static inline void
+dis_inst_set_cycle(struct dis_inst_node *inst_node, uint32_t state)
+{
+    inst_node->data->cycle[state] = dis_get_cycle_num();
+    return;
+}
+
 
 /* Increments the length of the given list by one. */
 static inline void
@@ -44,6 +51,9 @@ dis_inst_list_increment_len(struct dis_input *dis, uint8_t list)
         return;
     case LIST_ISSUE:
         dis->list_issue->len += 1;
+        return;
+    case LIST_EXEC:
+        dis->list_exec->len += 1;
         return;
     default:
         dis_assert(0);
@@ -69,6 +79,10 @@ dis_inst_list_decrement_len(struct dis_input *dis, uint8_t list)
         if (dis->list_issue->len)
             dis->list_issue->len -= 1;
         return;
+    case LIST_EXEC:
+        if (dis->list_exec->len)
+            dis->list_exec->len -= 1;
+        return;
     default:
         dis_assert(0);
         return;
@@ -87,6 +101,8 @@ dis_inst_list_get_len(struct dis_input *dis, uint8_t list)
         return dis->list_disp->len;
     case LIST_ISSUE:
         return dis->list_issue->len;
+    case LIST_EXEC:
+        return dis->list_exec->len;
     default:
         dis_assert(0);
         return 0;
@@ -105,6 +121,8 @@ dis_is_list_full(struct dis_input *dis, uint8_t list)
         return ((dis_inst_list_get_len(dis, LIST_DISP) >= (2 * dis->n)));
     case LIST_ISSUE:
         return ((dis_inst_list_get_len(dis, LIST_ISSUE) >= dis->s));
+    case LIST_EXEC:
+        return ((dis_inst_list_get_len(dis, LIST_EXEC) >= dis->n));
     default:
         dis_assert(0);
         return TRUE;
@@ -123,6 +141,8 @@ dis_can_push_on_list(struct dis_input *dis, uint8_t list)
         return !dis_is_list_full(dis, LIST_DISP);
     case LIST_ISSUE:
         return !dis_is_list_full(dis, LIST_ISSUE);
+    case LIST_EXEC:
+        return !dis_is_list_full(dis, LIST_EXEC);
     default:
         dis_assert(0);
         return FALSE;
@@ -138,6 +158,21 @@ dis_get_new_reg_name(void)
 }
 
 
+/* Sets the ready bit of the given inst. */
+static inline void
+dis_reg_set_ready_bit(struct dis_input *dis, uint16_t regno)
+{
+    if (!dis_is_reg_valid(regno)) {
+        dis_assert(0);
+        goto exit;
+    }
+    dis->rmt[regno]->ready = TRUE;
+
+exit:
+    return;
+}
+
+
 /* Assigns a new name to the register and clears the ready bit. */
 static inline void
 dis_rename_reg(struct dis_input *dis, uint16_t regno)
@@ -148,8 +183,9 @@ dis_rename_reg(struct dis_input *dis, uint16_t regno)
     }
 
     dis->rmt[regno]->name = dis_get_new_reg_name();
-    dis->rmt[regno]->ready = 0;
+    dis->rmt[regno]->ready = FALSE;
     dis->rmt[regno]->cycle = dis_get_cycle_num();
+    return;
 }
 
 
@@ -168,3 +204,4 @@ dis_cb_cmp(struct dis_inst_node *a, struct dis_inst_node *b)
 }
 
 #endif /* DIS_PIPELINE_PRI_H_ */
+

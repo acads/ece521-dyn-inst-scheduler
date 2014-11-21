@@ -49,6 +49,11 @@ typedef enum inst_state__ {
     STATE_MAX   /* Unused boundary value    */
 } inst_state;
 
+typedef enum inst_type__ {
+    TYPE_0,     /* latency = 1c */
+    TYPE_1,     /* latency = 2c */
+    TYPE_2      /* latency = 5c */
+} inst_type;
 
 /* Externs */
 extern uint32_t g_inst_num;
@@ -119,6 +124,7 @@ struct dis_input {
     struct dis_inst_list        *list_inst;     /* inst. list               */
     struct dis_disp_list        *list_disp;     /* dispatch list            */
     struct dis_list             *list_issue;    /* issue list               */
+    struct dis_list             *list_exec;     /* execute list             */
 };
 
 

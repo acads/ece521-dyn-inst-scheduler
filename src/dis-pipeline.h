@@ -85,8 +85,14 @@ dis_get_reg_cycle(struct dis_input *dis, uint16_t regno)
 /* Function declarations */
 bool
 dis_fetch(struct dis_input *dis);
+
 bool
 dis_dispatch(struct dis_input *dis);
 
+bool
+dis_issue(struct dis_input *dis);
+
+bool
+dis_execute(struct dis_input *dis);
 #endif /* DIS_PIPELINE_H_ */
 
