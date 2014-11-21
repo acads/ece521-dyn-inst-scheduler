@@ -32,7 +32,7 @@ dis_get_cycle_num(void)
 static inline uint32_t
 dis_get_next_inst_num(void)
 {
-    return ++g_inst_num;
+    return (++g_inst_num - 1);
 }
 
 
@@ -79,6 +79,21 @@ dis_get_reg_cycle(struct dis_input *dis, uint16_t regno)
     if (dis_is_reg_valid(regno))
         return dis->rmt[regno]->cycle;
     return 0;
+}
+
+
+/* Sorting compare cb for utlist. */
+static inline int
+dis_cb_cmp(struct dis_inst_node *a, struct dis_inst_node *b)
+{
+    /* Excerpt from utlist documentation:
+     * The comparison function must return an int that is negative, zero, or
+     * positive, which specifies whether the first item should sort before,
+     * equal to, or after the second item, respectively.
+     *
+     * In our case, older instructions should appear before newer insts.
+     */
+    return ((a->data->num < b->data->num) ? -1 : 1);
 }
 
 

@@ -63,11 +63,22 @@ extern FILE *g_trace_fptr;
 
 
 /* Data structures */
+/* Register data */
+struct dis_reg_data {
+    uint16_t    rnum;               /* register number, 0 - 127     */
+    uint32_t    name;               /* newest assigned name         */
+    uint32_t    cycle;              /* when it was renamed last?    */
+    bool        ready;              /* ready or not?                */
+};
+
 /* Inst list; fake ROB. */
 struct dis_inst_node {
-    struct dis_inst_data *data;
-    struct dis_inst_node *prev;
-    struct dis_inst_node *next;
+    struct dis_inst_data    *data;
+    struct dis_inst_node    *prev;
+    struct dis_inst_node    *next;
+    struct dis_reg_data     sreg1;
+    struct dis_reg_data     sreg2;
+    struct dis_reg_data     dreg;
 };
 
 /* Dispatch list */
@@ -101,14 +112,6 @@ struct dis_inst_data {
 
 };
 
-/* Register data */
-struct dis_reg_data {
-    uint16_t    rnum;               /* register number, 0 - 127     */
-    uint32_t    name;               /* newest assigned name         */
-    uint32_t    cycle;              /* when it was renamed last?    */
-    bool        ready;              /* ready or not?                */
-};
-
 /* Main scheduler info data */
 struct dis_input {
     /* configuration data */
@@ -119,7 +122,7 @@ struct dis_input {
     char                        tracefile[MAX_FILE_NAME_LEN + 1];
 
     /* registers */
-    struct dis_reg_data         *rmt[REG_TOTAL];       /* register data/rmt */
+    struct dis_reg_data         *rmt[REG_TOTAL + 1];    /* register data/rmt */
 
     /* pipeline lists */
     struct dis_inst_list        *list_inst;     /* inst. list               */

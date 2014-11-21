@@ -30,7 +30,7 @@ const char *inst_states[] = {"IF", "ID", "IS", "EX", "WB"};
  * the given inst in TAs format.
  */
 inline void
-dis_print_inst_stats(struct dis_input *dis, struct dis_inst_node *inst)
+dis_print_inst_entry_stats(struct dis_input *dis, struct dis_inst_node *inst)
 {
     int16_t sreg1, sreg2, dreg;
     struct dis_inst_data *data = inst->data;
@@ -40,13 +40,29 @@ dis_print_inst_stats(struct dis_input *dis, struct dis_inst_node *inst)
     dreg = (dis_is_reg_valid(data->dreg) ? data->dreg : -1);
 
     dprint("%u fu{%u} src{%d,%d} dst{%d} ",
-        (data->num - 1), data->type, sreg1, sreg2, dreg);
+        data->num, data->type, sreg1, sreg2, dreg);
     dprint("IF{%u,%u} ID{%u,%u} IS{%u,%u} EX{%u,%u} WB{%u,%u}\n",
         data->cycle[STATE_IF], data->cycle[STATE_ID] - data->cycle[STATE_IF],
         data->cycle[STATE_ID], data->cycle[STATE_IS] - data->cycle[STATE_ID],
         data->cycle[STATE_IS], data->cycle[STATE_EX] - data->cycle[STATE_IS],
         data->cycle[STATE_EX], data->cycle[STATE_WB] - data->cycle[STATE_EX],
         data->cycle[STATE_WB], 1);
+
+    return;
+}
+
+
+/*
+ * Pretty prints the insts (as in program order) stats in TAs format.
+ */
+inline void
+dis_print_inst_stats(struct dis_input *dis)
+{
+    struct dis_inst_node *iter = NULL;
+
+    DL_SORT(dis->list_wback->list, dis_cb_cmp);
+    DL_FOREACH(dis->list_wback->list, iter)
+        dis_print_inst_entry_stats(dis, iter);
 
     return;
 }
@@ -128,11 +144,17 @@ exit:
 
 
 static inline void
-dis_print_rmt_entry(struct dis_input *dis, uint16_t regno)
+dis_print_rmt_entry(struct dis_input *dis, uint16_t regno, bool format)
 {
-    dprint("reg %3u, name %5u, ready %u, cycle %5u\n",
-        regno, dis_get_reg_name(dis, regno), dis_is_reg_ready(dis, regno),
-        dis_get_reg_cycle(dis, regno));
+    if (format) {
+        dprint("reg %3u, name %5u, ready %u, cycle %5u\n",
+            regno, dis_get_reg_name(dis, regno), dis_is_reg_ready(dis, regno),
+            dis_get_reg_cycle(dis, regno));
+    } else {
+        dprint("reg %u, name %u, ready %u, cycle %u\n",
+            regno, dis_get_reg_name(dis, regno), dis_is_reg_ready(dis, regno),
+            dis_get_reg_cycle(dis, regno));
+    }
     return;
 }
 
@@ -142,7 +164,7 @@ dis_print_rmt(struct dis_input *dis, uint16_t regno)
 {
     if (dis_is_reg_valid(regno)) {
         /* Just print data for the given register alone. */
-        dis_print_rmt_entry(dis, regno);
+        dis_print_rmt_entry(dis, regno, FALSE);
     } else {
         /* Print the whole table. */
         uint16_t i = 0;
@@ -150,7 +172,7 @@ dis_print_rmt(struct dis_input *dis, uint16_t regno)
         dprint_dbg("register remap table\n");
         dprint_dbg("--------------------\n");
         for (i = 0; i <= REG_MAX_VALUE; ++i)
-            dis_print_rmt_entry(dis, i);
+            dis_print_rmt_entry(dis, i, TRUE);
     }
     return;
 }

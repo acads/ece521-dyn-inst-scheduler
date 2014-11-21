@@ -30,41 +30,6 @@ uint32_t    g_reg_name = 0;     /* running register name for renames    */
  * Retire stage. Go over the main inst list and print out the entries
  * in WB stage. Finally remove them from the list.
  */
-#if 0
-bool
-dis_retire(struct dis_input *dis)
-{
-    struct dis_inst_node    *tmp = NULL;
-    struct dis_inst_node    *iter = NULL;
-
-    if (!dis) {
-        dis_assert(0);
-        goto error_exit;
-    }
-
-    DL_FOREACH_SAFE(dis->list_inst->list, iter, tmp) {
-        if (STATE_WB != dis_inst_get_state(iter))
-            continue;
-
-        dis_print_inst_stats(dis, iter);
-
-        DL_DELETE(dis->list_inst->list, iter);
-        dis_inst_list_decrement_len(dis, LIST_ISSUE);
-
-        dprint_info("inst %u, WB-->NA, inst(%u)-->inst(%u), cycle %u\n",
-            iter->data->num, dis_inst_list_get_len(dis, LIST_INST),
-            dis_inst_list_get_len(dis, LIST_INST), dis_get_cycle_num());
-
-        /* DAN_TODO: Fix this. */
-        //free(iter);
-    }
-
-    return TRUE;
-
-error_exit:
-    return FALSE;
-}
-#endif
 bool
 dis_retire(struct dis_input *dis)
 {
@@ -81,9 +46,6 @@ dis_retire(struct dis_input *dis)
             dis_assert(0);
             continue;
         }
-
-        /* Pretty print the stats in TAs format. */
-        dis_print_inst_stats(dis, iter);
 
 #if 0
         DL_DELETE(dis->list_inst->list, iter);
@@ -149,6 +111,49 @@ error_exit:
 }
 
 
+/* 
+ * Update the reg ready bit in RMT and wakeup waiting insts in issue list
+ * on an inst completion.
+ */
+static void
+dis_exec_update_regs(struct dis_input *dis, struct dis_inst_node *inst)
+{
+    uint16_t                dreg = 0;
+    struct dis_inst_node    *iter = NULL;
+
+    /* The given inst has finished execution. We need to update the dreg in
+     * RMT and other inst in IS stage that may be waiting on this dreg.
+     * If dreg is valid (i.e., not -1), do the following:
+     *  1. Set the ready bit of the dreg in RMT.
+     *  2. Go over the issue list and see if any of the insts is waiting on 
+     *     this dreg (i.e. issue_list.src1 == dreg || issue_list.src2 == dreg)
+     *     for all nodes in issue list). If so, set the private ready bit(s).
+     */
+
+    dreg = inst->data->dreg;
+    if (dis_is_reg_valid(dreg)) {
+        dis_reg_set_ready_bit(dis, dreg);
+        dprint_info("inst %u, dreg %u, setting ready bit, cycle %u\n",
+            inst->data->num, dreg, dis_get_cycle_num());
+
+        DL_FOREACH(dis->list_issue->list, iter) {
+            if (iter->sreg1.rnum == dreg) {
+                dprint_info("inst %u, sreg1 %u, wakeup, cycle %u\n",
+                    iter->data->num, iter->sreg1.rnum, dis_get_cycle_num());
+                iter->sreg1.ready = 1;
+            }
+
+            if (iter->sreg2.rnum == dreg) {
+                iter->sreg2.ready = 1;
+                dprint_info("inst %u, sreg2 %u, wakeup, cycle %u\n",
+                    iter->data->num, iter->sreg2.rnum, dis_get_cycle_num());
+            }
+        }
+    }
+    return;
+}
+
+
 /* Put the give inst on exec list, provided the list has room. */
 static bool
 dis_exec_push_inst(struct dis_input *dis, struct dis_inst_node *inst)
@@ -200,9 +205,8 @@ dis_execute(struct dis_input *dis)
                     dis_inst_list_get_len(dis, LIST_WBACK),
                     dis_get_cycle_num());
 
-            /* Update dreg entry's ready bit in RMT. */
-            if (dis_is_reg_valid(iter->data->dreg))
-                dis_reg_set_ready_bit(dis, iter->data->dreg);
+            /* Update this inst dreg ready bit and wakeup waiting insts. */ 
+            dis_exec_update_regs(dis, iter);
 
             /* DAN_TODO: Fix this. */
             //free(iter);
@@ -225,6 +229,10 @@ dis_issue_push_inst(struct dis_input *dis, struct dis_inst_node *inst)
         node = (struct dis_inst_node *) calloc(1, sizeof(*node));
         node->data = inst->data;
 
+        memcpy(&node->sreg1, dis->rmt[inst->data->sreg1], sizeof(node->sreg1));
+        memcpy(&node->sreg2, dis->rmt[inst->data->sreg2], sizeof(node->sreg2));
+        memcpy(&node->dreg, dis->rmt[inst->data->dreg], sizeof(node->dreg));
+
         DL_APPEND(dis->list_issue->list, node);
         dis_inst_list_increment_len(dis, LIST_ISSUE);
         return TRUE;
@@ -240,14 +248,30 @@ dis_issue_push_inst(struct dis_input *dis, struct dis_inst_node *inst)
 static inline bool
 dis_issue_are_operands_ready(struct dis_input *dis, struct dis_inst_node *inst)
 {
+    bool rv = TRUE;
+
 #ifdef DBG_ON
-    dprint_info("inst %u, sreg1 %u ready %u, sreg2 %u ready %u\n",
-        inst->data->num, inst->data->sreg1, dis->rmt[inst->data->sreg1]->ready,
-        inst->data->sreg2, dis->rmt[inst->data->sreg2]->ready);
+        dprint_info("inst %u, sreg1 %u ready %u, sreg2 %u ready %u\n",
+            inst->data->num, inst->sreg1.rnum, inst->sreg1.ready,
+            inst->sreg2.rnum, inst->sreg2.ready);
 #endif /* DBG_ON */
 
-    return (dis_is_reg_ready(dis, inst->data->sreg1) &&
-                dis_is_reg_ready(dis, inst->data->sreg2));
+    if (dis_is_reg_valid(inst->sreg1.rnum)) {
+        if (!inst->sreg1.ready) {
+            dprint_info("sreg1 not ready\n");
+            rv = FALSE;
+        }
+    }
+
+    if (dis_is_reg_valid(inst->sreg2.rnum)) {
+        if (!inst->sreg2.ready) {
+            dprint_info("sreg2 not ready\n");
+            rv = FALSE;
+        }
+    }
+
+    dprint_info("returning %u\n", rv);
+    return rv;
 }
 
 
@@ -331,7 +355,7 @@ dis_dispatch_rename_regs(struct dis_input *dis, struct dis_inst_node *inst)
 
     if (dis_is_reg_valid(inst->data->sreg1) &&
             !dis_is_reg_ready(dis, inst->data->sreg1)) {
-        dis_rename_reg(dis, inst->data->sreg1);
+        dis_rename_reg(dis, inst->data->sreg1, FALSE);
 
         dprint_info("inst %u, sreg1 rename, ", inst->data->num);
 #ifdef DBG_ON
@@ -341,7 +365,7 @@ dis_dispatch_rename_regs(struct dis_input *dis, struct dis_inst_node *inst)
 
     if (dis_is_reg_valid(inst->data->sreg2) &&
             !dis_is_reg_ready(dis, inst->data->sreg2)) {
-        dis_rename_reg(dis, inst->data->sreg2);
+        dis_rename_reg(dis, inst->data->sreg2, FALSE);
 
         dprint_info("inst %u, sreg2 rename, ", inst->data->num);
 #ifdef DBG_ON
@@ -350,7 +374,7 @@ dis_dispatch_rename_regs(struct dis_input *dis, struct dis_inst_node *inst)
     }
 
     if (dis_is_reg_valid(inst->data->dreg)) {
-        dis_rename_reg(dis, inst->data->dreg);
+        dis_rename_reg(dis, inst->data->dreg, TRUE);
 
         dprint_info("inst %u, dreg rename, ", inst->data->num);
 #ifdef DBG_ON
@@ -493,6 +517,7 @@ dis_fetch(struct dis_input *dis)
         new_inst = (struct dis_inst_data *) calloc(1, sizeof(*new_inst));
         new_inst->num = dis_get_next_inst_num(); 
         new_inst->pc = pc;
+        new_inst->type = inst_type;
         new_inst->dreg = (REG_NO_VALUE == dreg) ? REG_INVALID_VALUE : dreg;
         new_inst->sreg1 = (REG_NO_VALUE == sreg1) ? REG_INVALID_VALUE : sreg1;
         new_inst->sreg2 = (REG_NO_VALUE == sreg2) ? REG_INVALID_VALUE : sreg2;

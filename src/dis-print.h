@@ -24,7 +24,10 @@ void
 dis_print_input_data(struct dis_input *dis);
 
 inline void
-dis_print_inst_stats(struct dis_input *dis, struct dis_inst_node *inst);
+dis_print_inst_entry_stats(struct dis_input *dis, struct dis_inst_node *inst);
+
+inline void
+dis_print_inst_stats(struct dis_input *dis);
 
 #endif /* DIS_PRINT_H_ */
 

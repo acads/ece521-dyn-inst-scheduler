@@ -57,6 +57,10 @@ dis_init(struct dis_input *dis)
         dis->rmt[i]->rnum = i;
         dis->rmt[i]->ready = TRUE;
     }
+    dis->rmt[REG_TOTAL] = (struct dis_reg_data *)
+        calloc(1, sizeof(*dis->rmt[REG_TOTAL]));
+    dis->rmt[i]->rnum = REG_TOTAL;
+    dis->rmt[i]->ready = FALSE;
 
     /* Allocate memory for all the lists. */
     dis->list_inst = (struct dis_inst_list *)
@@ -79,7 +83,7 @@ dis_cleanup(struct dis_input *dis)
     struct dis_inst_node    *iter = NULL;
     struct dis_inst_node    *tmp = NULL;
 
-    for (i = 0; i < REG_TOTAL; ++i) {
+    for (i = 0; i <= REG_TOTAL; ++i) {
         free(dis->rmt[i]);
         dis->rmt[i] = NULL;
     }
@@ -212,6 +216,7 @@ dis_parse_tracefile(struct dis_input *dis)
     dis_print_list(dis, LIST_WBACK);
 #endif
 
+    dis_print_inst_stats(dis);
     return TRUE;
 
 error_exit:

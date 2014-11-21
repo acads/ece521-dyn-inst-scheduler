@@ -131,7 +131,7 @@ dis_is_list_full(struct dis_input *dis, uint8_t list)
     case LIST_ISSUE:
         return ((dis_inst_list_get_len(dis, LIST_ISSUE) >= dis->s));
     case LIST_EXEC:
-        return ((dis_inst_list_get_len(dis, LIST_EXEC) >= dis->n));
+        return ((dis_inst_list_get_len(dis, LIST_EXEC) >= (dis->n * 5)));
     default:
         dis_assert(0);
         return TRUE;
@@ -184,7 +184,7 @@ exit:
 
 /* Assigns a new name to the register and clears the ready bit. */
 static inline void
-dis_rename_reg(struct dis_input *dis, uint16_t regno)
+dis_rename_reg(struct dis_input *dis, uint16_t regno, bool dreg)
 {
     if (!dis_is_reg_valid(regno)) {
         dis_assert(0);
@@ -192,24 +192,10 @@ dis_rename_reg(struct dis_input *dis, uint16_t regno)
     }
 
     dis->rmt[regno]->name = dis_get_new_reg_name();
-    dis->rmt[regno]->ready = FALSE;
     dis->rmt[regno]->cycle = dis_get_cycle_num();
+    if (dreg)
+        dis->rmt[regno]->ready = FALSE;
     return;
-}
-
-
-/* Sorting compare cb for utlist. */
-static inline int
-dis_cb_cmp(struct dis_inst_node *a, struct dis_inst_node *b)
-{
-    /* Excerpt from utlist documentation:
-     * The comparison function must return an int that is negative, zero, or
-     * positive, which specifies whether the first item should sort before,
-     * equal to, or after the second item, respectively.
-     *
-     * In our case, older instructions should appear before newer insts.
-     */
-    return ((a->data->num < b->data->num) ? -1 : 1);
 }
 
 #endif /* DIS_PIPELINE_PRI_H_ */
