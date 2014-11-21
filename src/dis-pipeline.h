@@ -94,5 +94,9 @@ dis_issue(struct dis_input *dis);
 
 bool
 dis_execute(struct dis_input *dis);
+
+bool
+dis_retire(struct dis_input *dis);
+
 #endif /* DIS_PIPELINE_H_ */
 

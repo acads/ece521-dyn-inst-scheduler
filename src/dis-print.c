@@ -91,6 +91,13 @@ dis_print_list(struct dis_input *dis, uint8_t list_type)
         list = dis->list_exec->list;
         break;
 
+    case LIST_WBACK:
+        dprint("\n");
+        dprint("wback list\n");
+        dprint("----------\n");
+        list = dis->list_wback->list;
+        break;
+
     default:
         dis_assert(0);
         goto exit;

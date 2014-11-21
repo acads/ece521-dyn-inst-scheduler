@@ -25,6 +25,102 @@
 /* Private globals. */
 uint32_t    g_reg_name = 0;     /* running register name for renames    */
 
+
+/*
+ * Retire stage. Go over the main inst list and print out the entries
+ * in WB stage. Finally remove them from the list.
+ */
+#if 0
+bool
+dis_retire(struct dis_input *dis)
+{
+    struct dis_inst_node    *tmp = NULL;
+    struct dis_inst_node    *iter = NULL;
+
+    if (!dis) {
+        dis_assert(0);
+        goto error_exit;
+    }
+
+    DL_FOREACH_SAFE(dis->list_inst->list, iter, tmp) {
+        if (STATE_WB != dis_inst_get_state(iter))
+            continue;
+
+        dis_print_inst_stats(dis, iter);
+
+        DL_DELETE(dis->list_inst->list, iter);
+        dis_inst_list_decrement_len(dis, LIST_ISSUE);
+
+        dprint_info("inst %u, WB-->NA, inst(%u)-->inst(%u), cycle %u\n",
+            iter->data->num, dis_inst_list_get_len(dis, LIST_INST),
+            dis_inst_list_get_len(dis, LIST_INST), dis_get_cycle_num());
+
+        /* DAN_TODO: Fix this. */
+        //free(iter);
+    }
+
+    return TRUE;
+
+error_exit:
+    return FALSE;
+}
+#endif
+bool
+dis_retire(struct dis_input *dis)
+{
+    struct dis_inst_node    *tmp = NULL;
+    struct dis_inst_node    *iter = NULL;
+
+    if (!dis) {
+        dis_assert(0);
+        goto error_exit;
+    }
+
+    DL_FOREACH_SAFE(dis->list_wback->list, iter, tmp) {
+        if (STATE_WB != dis_inst_get_state(iter)) {
+            dis_assert(0);
+            continue;
+        }
+
+        /* Pretty print the stats in TAs format. */
+        dis_print_inst_stats(dis, iter);
+
+#if 0
+        DL_DELETE(dis->list_inst->list, iter);
+        dis_inst_list_decrement_len(dis, LIST_ISSUE);
+#endif
+
+        dprint_info("inst %u, WB-->NA, inst(%u)-->inst(%u), cycle %u\n",
+            iter->data->num, dis_inst_list_get_len(dis, LIST_INST),
+            dis_inst_list_get_len(dis, LIST_INST), dis_get_cycle_num());
+
+        /* DAN_TODO: Fix this. */
+        //free(iter);
+    }
+    return TRUE;
+
+error_exit:
+    return FALSE;
+}
+
+
+/* Put the give inst on writeback list. */
+static bool
+dis_wback_push_inst(struct dis_input *dis, struct dis_inst_node *inst)
+{
+    struct dis_inst_node *node = NULL;
+
+    node = (struct dis_inst_node *) calloc(1, sizeof(*node));
+    node->data = inst->data;
+
+    DL_APPEND(dis->list_wback->list, node);
+    dis_inst_list_increment_len(dis, LIST_WBACK);
+
+    return TRUE;
+}
+
+
+
 static inline bool
 dis_execute_is_over(struct dis_input *dis, struct dis_inst_node *inst)
 {
@@ -67,7 +163,6 @@ dis_exec_push_inst(struct dis_input *dis, struct dis_inst_node *inst)
         dis_inst_list_increment_len(dis, LIST_EXEC);
         return TRUE;
     }
-
     return FALSE;
 }
 
@@ -95,27 +190,24 @@ dis_execute(struct dis_input *dis)
              */
             dis_inst_set_state(iter, STATE_WB);
             dis_inst_set_cycle(iter, STATE_WB);
+            dis_wback_push_inst(dis, iter);
 
             DL_DELETE(dis->list_exec->list, iter);
             dis_inst_list_decrement_len(dis, LIST_EXEC);
 
-            dprint_info("inst %u, EX-->WB, exec(%u)-->inst(%u), cycle %u\n",
+            dprint_info("inst %u, EX-->WB, exec(%u)-->wback(%u), cycle %u\n",
                     iter->data->num, dis_inst_list_get_len(dis, LIST_EXEC),
-                    dis_inst_list_get_len(dis, LIST_INST),
+                    dis_inst_list_get_len(dis, LIST_WBACK),
                     dis_get_cycle_num());
 
             /* Update dreg entry's ready bit in RMT. */
-            dis_reg_set_ready_bit(dis, iter->data->dreg);
+            if (dis_is_reg_valid(iter->data->dreg))
+                dis_reg_set_ready_bit(dis, iter->data->dreg);
 
             /* DAN_TODO: Fix this. */
             //free(iter);
         }
     }
-
-#ifdef DBG_ON
-    dis_print_list(dis, LIST_EXEC);
-#endif /* DBG_ON */
-
     return TRUE;
 
 error_exit:
@@ -148,6 +240,12 @@ dis_issue_push_inst(struct dis_input *dis, struct dis_inst_node *inst)
 static inline bool
 dis_issue_are_operands_ready(struct dis_input *dis, struct dis_inst_node *inst)
 {
+#ifdef DBG_ON
+    dprint_info("inst %u, sreg1 %u ready %u, sreg2 %u ready %u\n",
+        inst->data->num, inst->data->sreg1, dis->rmt[inst->data->sreg1]->ready,
+        inst->data->sreg2, dis->rmt[inst->data->sreg2]->ready);
+#endif /* DBG_ON */
+
     return (dis_is_reg_ready(dis, inst->data->sreg1) &&
                 dis_is_reg_ready(dis, inst->data->sreg2));
 }
@@ -210,11 +308,7 @@ dis_issue(struct dis_input *dis)
     }
 
     /* Sort the exec list in the order of inst in trce file. */
-    DL_SORT(dis->list_exec->list, dis_cb_cmp);
-
-#ifdef DBG_ON
-    dis_print_list(dis, LIST_ISSUE);
-#endif /* DBG_ON */
+    //DL_SORT(dis->list_exec->list, dis_cb_cmp);
     return TRUE;
 
 error_exit:
@@ -240,7 +334,9 @@ dis_dispatch_rename_regs(struct dis_input *dis, struct dis_inst_node *inst)
         dis_rename_reg(dis, inst->data->sreg1);
 
         dprint_info("inst %u, sreg1 rename, ", inst->data->num);
+#ifdef DBG_ON
         dis_print_rmt(dis, inst->data->sreg1);
+#endif /* DBG_ON */
     }
 
     if (dis_is_reg_valid(inst->data->sreg2) &&
@@ -248,14 +344,18 @@ dis_dispatch_rename_regs(struct dis_input *dis, struct dis_inst_node *inst)
         dis_rename_reg(dis, inst->data->sreg2);
 
         dprint_info("inst %u, sreg2 rename, ", inst->data->num);
+#ifdef DBG_ON
         dis_print_rmt(dis, inst->data->sreg2);
+#endif /* DBG_ON */
     }
 
     if (dis_is_reg_valid(inst->data->dreg)) {
         dis_rename_reg(dis, inst->data->dreg);
 
         dprint_info("inst %u, dreg rename, ", inst->data->num);
+#ifdef DBG_ON
         dis_print_rmt(dis, inst->data->dreg);
+#endif /* DBG_ON */
     }
 }
 
@@ -339,10 +439,6 @@ dis_dispatch(struct dis_input *dis)
                 iter->data->num, dis_inst_list_get_len(dis, LIST_DISP),
                 dis_inst_list_get_len(dis, LIST_DISP), dis_get_cycle_num());
     }
-
-#ifdef DBG_ON
-    dis_print_list(dis, LIST_DISP);
-#endif /* DBG_ON */
     return TRUE;
 
 error_exit:

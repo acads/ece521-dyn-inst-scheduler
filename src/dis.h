@@ -29,6 +29,7 @@
 #define LIST_DISP               1
 #define LIST_ISSUE              2
 #define LIST_EXEC               3
+#define LIST_WBACK              4
 
 #ifndef TRUE
 #define TRUE    1
@@ -125,6 +126,7 @@ struct dis_input {
     struct dis_disp_list        *list_disp;     /* dispatch list            */
     struct dis_list             *list_issue;    /* issue list               */
     struct dis_list             *list_exec;     /* execute list             */
+    struct dis_list             *list_wback;    /* writeback list           */
 };
 
 

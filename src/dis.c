@@ -65,6 +65,7 @@ dis_init(struct dis_input *dis)
                             calloc(1, sizeof(*dis->list_disp));
     dis->list_issue = (struct dis_list *) calloc(1, sizeof(*dis->list_issue));
     dis->list_exec = (struct dis_list *) calloc(1, sizeof(*dis->list_exec));
+    dis->list_wback = (struct dis_list *) calloc(1, sizeof(*dis->list_wback));
 
 exit:
     return;
@@ -123,6 +124,16 @@ dis_cleanup(struct dis_input *dis)
         dis->list_exec = NULL;
     }
 
+    if (dis->list_wback) {
+        DL_FOREACH_SAFE(dis->list_wback->list, iter, tmp) {
+            free(iter->data);
+            free(iter);
+        }
+        iter = tmp = NULL;
+        free(dis->list_wback);
+        dis->list_wback = NULL;
+    }
+
     return;
 }
 
@@ -151,6 +162,9 @@ dis_parse_tracefile(struct dis_input *dis)
         dprint_dbg("curr cycle %u\n", dis_get_cycle_num());
         dprint_dbg("--------------\n");
 
+        /* Retire stage. */
+        dis_retire(dis);
+
         /* Execute stage. */
         dis_execute(dis);
 
@@ -168,6 +182,14 @@ dis_parse_tracefile(struct dis_input *dis)
             }
         }
 
+#ifdef DBG_ON
+    /* Print all inst fetched so far. */
+    dis_print_list(dis, LIST_INST);
+    dis_print_list(dis, LIST_DISP);
+    dis_print_list(dis, LIST_ISSUE);
+    dis_print_list(dis, LIST_EXEC);
+    dis_print_list(dis, LIST_WBACK);
+#endif /* DBG_ON */
         if (trace_done)
             break;
 
@@ -179,13 +201,16 @@ dis_parse_tracefile(struct dis_input *dis)
 
 #ifdef DBG_ON
     dis_print_rmt(dis, REG_INVALID_VALUE);
+#endif /* DBG_ON */
 
+#if 0
     /* Print all inst fetched so far. */
     dis_print_list(dis, LIST_INST);
     dis_print_list(dis, LIST_DISP);
     dis_print_list(dis, LIST_ISSUE);
-#endif /* DBG_ON */
-
+    dis_print_list(dis, LIST_EXEC);
+    dis_print_list(dis, LIST_WBACK);
+#endif
 
     return TRUE;
 

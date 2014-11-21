@@ -55,6 +55,9 @@ dis_inst_list_increment_len(struct dis_input *dis, uint8_t list)
     case LIST_EXEC:
         dis->list_exec->len += 1;
         return;
+    case LIST_WBACK:
+        dis->list_wback->len += 1;
+        return;
     default:
         dis_assert(0);
         return;
@@ -83,6 +86,10 @@ dis_inst_list_decrement_len(struct dis_input *dis, uint8_t list)
         if (dis->list_exec->len)
             dis->list_exec->len -= 1;
         return;
+    case LIST_WBACK:
+        if (dis->list_wback->len)
+            dis->list_wback->len -= 1;
+        return;
     default:
         dis_assert(0);
         return;
@@ -103,6 +110,8 @@ dis_inst_list_get_len(struct dis_input *dis, uint8_t list)
         return dis->list_issue->len;
     case LIST_EXEC:
         return dis->list_exec->len;
+    case LIST_WBACK:
+        return dis->list_wback->len;
     default:
         dis_assert(0);
         return 0;
