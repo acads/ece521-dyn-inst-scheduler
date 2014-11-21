@@ -127,9 +127,10 @@ dis_print_list(struct dis_input *dis, uint8_t list_type)
         sreg2 = (REG_INVALID_VALUE == iter->data->sreg2) ? 
             REG_NO_VALUE : iter->data->sreg2;
 
-        dprint("inum %5u, pc 0x%x, dreg %3d, sreg1 %3d, sreg2 %3d, "    \
+        dprint("inum %5u, pc 0x%x, dreg %3d/%d, sreg1 %3d/%d, sreg2 %3d/%d, "    \
                 "mem_addr 0x%08x, state %s, ",
-                iter->data->num, iter->data->pc, dreg, sreg1, sreg2,
+                iter->data->num, iter->data->pc, dreg, iter->dreg.name, 
+                sreg1, iter->sreg1.name, sreg2, iter->sreg2.name,
                 iter->data->mem_addr, inst_states[iter->data->state]);
         dprint("cycle ");
         for (i = 0; i < STATE_MAX; ++i)
@@ -160,11 +161,13 @@ dis_print_rmt_entry(struct dis_input *dis, uint16_t regno, bool format)
 
 
 void
-dis_print_rmt(struct dis_input *dis, uint16_t regno)
+dis_print_rmt(struct dis_input *dis, int16_t regno)
 {
     if (dis_is_reg_valid(regno)) {
         /* Just print data for the given register alone. */
         dis_print_rmt_entry(dis, regno, FALSE);
+    } else if (-1 == regno) {
+        dprint("reg %d, invalid reg\n", regno);
     } else {
         /* Print the whole table. */
         uint16_t i = 0;

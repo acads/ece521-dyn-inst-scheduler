@@ -131,6 +131,7 @@ dis_is_list_full(struct dis_input *dis, uint8_t list)
     case LIST_ISSUE:
         return ((dis_inst_list_get_len(dis, LIST_ISSUE) >= dis->s));
     case LIST_EXEC:
+        //return ((dis_inst_list_get_len(dis, LIST_EXEC) >= dis->n));
         return ((dis_inst_list_get_len(dis, LIST_EXEC) >= (dis->n * 5)));
     default:
         dis_assert(0);
