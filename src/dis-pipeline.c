@@ -118,12 +118,9 @@ dis_exec_cache_lookup(struct dis_input *dis, struct dis_inst_node *inst)
     mref.ref_type = MEM_REF_TYPE_READ;
     mref.ref_addr = inst->data->mem_addr;
 
-    if (cache_handle_memory_request(dis->l1, &mref, &cache_latency)) {
-        dprint_info("data cache hit, cache latency %u\n", cache_latency);
-    } else {
-        cache_latency = CACHE_TOTAL_MISS_LATENCY;
-        dprint_info("data cache hit, cache latency %u\n", cache_latency);
-    }
+    cache_handle_memory_request(dis->l1, &mref, &cache_latency);
+    dprint_info("inst %u, cache latency %u, cycle %u\n",
+        inst->data->num, cache_latency, dis_get_cycle_num());
 
     /* Add the cache latency to the execute latency of the inst. */
     inst->data->latency += cache_latency;
@@ -281,9 +278,9 @@ dis_issue_are_operands_ready(struct dis_input *dis, struct dis_inst_node *inst)
     bool rv = TRUE;
 
 #ifdef DBG_ON
-        dprint_info("inst %u, sreg1 %u ready %u, sreg2 %u ready %u\n",
+        dprint_info("inst %u, sreg1 %u ready %u, sreg2 %u ready %u, cycle %u\n",
             inst->data->num, inst->sreg1.rnum, inst->sreg1.ready,
-            inst->sreg2.rnum, inst->sreg2.ready);
+            inst->sreg2.rnum, inst->sreg2.ready, dis_get_cycle_num());
 #endif /* DBG_ON */
 
     if (dis_is_reg_valid(inst->sreg1.rnum)) {
@@ -486,11 +483,6 @@ dis_dispatch(struct dis_input *dis)
             node->data = iter->data;
 
             /* Now, rename the sreg and update it in the new node too. */
-#ifdef DBG_ON
-            dis_print_rmt(dis, iter->data->sreg1);
-            dis_print_rmt(dis, iter->data->sreg2);
-            dis_print_rmt(dis, iter->data->dreg);
-#endif /* DBG_ON */
             dis_dispatch_rename_sreg(dis, iter);
             memcpy(&node->sreg1, dis->rmt[iter->data->sreg1], 
                     sizeof(node->sreg1));
@@ -595,6 +587,12 @@ dis_fetch(struct dis_input *dis)
         new_inst->sreg1 = (REG_NO_VALUE == sreg1) ? REG_INVALID_VALUE : sreg1;
         new_inst->sreg2 = (REG_NO_VALUE == sreg2) ? REG_INVALID_VALUE : sreg2;
         new_inst->mem_addr = mem_addr;
+
+        /* If cache is enabled, the latency for type2 insts are based on the
+         * cachee lookup results. So, set it to 0 here.
+         */
+        if ((TYPE_2 == new_inst->type) && (dis->l1))
+            new_inst->latency = 0;
 
         new_inst_node = (struct dis_inst_node *) 
                             calloc(1, sizeof(*new_inst_node));

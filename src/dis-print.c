@@ -20,6 +20,7 @@
 #include "dis-utils.h"
 #include "dis-print.h"
 #include "dis-pipeline.h"
+#include "dis-cache-print.h"
 #include "utlist.h"
 
 const char *inst_states[] = {"IF", "ID", "IS", "EX", "WB"};
@@ -64,6 +65,11 @@ dis_print_inst_stats(struct dis_input *dis)
     DL_SORT(dis->list_wback->list, dis_cb_cmp);
     DL_FOREACH(dis->list_wback->list, iter)
         dis_print_inst_entry_stats(dis, iter);
+
+    /* Print L1 cache data, if present. */
+    if (dis->l1) {
+        cache_print_cache_data(dis->l1);
+    }
 
     /* Now, the scheduler configuration. */
     dprint("CONFIGURATION\n");

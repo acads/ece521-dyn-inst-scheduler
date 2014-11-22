@@ -1,6 +1,6 @@
 /* 
  * ECE 521 - Computer Design Techniques, Fall 2014
- * Project 1A - Generic Cache Implementation
+ * Project 3 - Dyanamic Instruction Scheduler
  *
  * This module contains all required util function declrations for the 
  * cache implementation.
@@ -20,6 +20,10 @@
 #include "dis-cache.h"
 #include "dis-cache-utils.h"
 
+#ifdef dprint_info
+#undef dprint_info
+#define dprint_info(str, ...)
+#endif
 
 /* Util functions */
 /*************************************************************************** 

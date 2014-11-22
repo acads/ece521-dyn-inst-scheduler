@@ -259,7 +259,7 @@ dis_parse_input(int argc, char **argv, struct dis_input *dis)
     l2_set_assoc = atoi(argv[++arg_iter]);
 
     if (blk_size) {
-        cache_init(dis->l1, NULL, dis->l2, argc, argv + arg_iter + 1);
+        cache_init(dis->l1, NULL, dis->l2, argc, argv + 3);
         cache_tagstore_init(dis->l1, &g_dis_l1_ts);
 
         if (l2_cache_size)

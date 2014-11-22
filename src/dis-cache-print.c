@@ -19,6 +19,11 @@
 #include "dis-cache-utils.h"
 #include "dis-cache-print.h"
 
+#ifdef dprint_info
+#undef dprint_info
+#define dprint_info(str, ...)
+#endif
+
 /*************************************************************************** 
  * Name:    cache_print_sim_config 
  *
@@ -243,7 +248,7 @@ cache_print_cache_data(cache_generic_t *cache)
 
     switch (cache->level) {
         case CACHE_LEVEL_1:
-            title = "===== L1 contents =====";
+            title = "L1 CACHE CONTENTS";
             break;
 
         case CACHE_LEVEL_L1_VICTIM:
@@ -258,6 +263,10 @@ cache_print_cache_data(cache_generic_t *cache)
     }
 
     dprint("%s\n", title);
+    dprint("a. number of accesses : %u\n",
+            (cache->stats.num_reads + cache->stats.num_writes));
+    dprint("b. number of misses : %u\n",
+            (cache->stats.num_read_misses + cache->stats.num_write_misses));
     for (index = 0; index < num_sets; ++index) {
         tag_index = (index * num_blocks_per_set);
         tags = &tagstore->tags[tag_index];
@@ -273,8 +282,10 @@ cache_print_cache_data(cache_generic_t *cache)
         for (block_id = 0; block_id < num_blocks_per_set; ++block_id)
             tag_ages[block_id] = tag_data[block_id].age;
 
+#if 0
         qsort(tag_ages, num_blocks_per_set,
                 sizeof(uint64_t), util_compare_uint64);
+#endif
         
         dprint("set%4u: ", index);
         for (id = 0; id < num_blocks_per_set; ++id) {
