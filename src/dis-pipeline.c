@@ -24,6 +24,10 @@
 
 /* Private globals. */
 uint32_t    g_reg_name = 0;     /* running register name for renames    */
+uint8_t     g_latency[] = {     /* cycle latency based on inst type     */
+                    LATENCY_TYPE_0,
+                    LATENCY_TYPE_1,
+                    LATENCY_TYPE_2};
 
 
 /*
@@ -82,32 +86,13 @@ dis_wback_push_inst(struct dis_input *dis, struct dis_inst_node *inst)
 }
 
 
-
+/* Checks if the inst has lived thru all its latency cycles (TRUE) or not. */
 static inline bool
 dis_execute_is_over(struct dis_input *dis, struct dis_inst_node *inst)
 {
-    uint8_t latency = 0;
-
-    switch (inst->data->type) {
-    case TYPE_0:
-        latency = 1;
-        break;
-    case TYPE_1:
-        latency = 2;
-        break;
-    case TYPE_2:
-        latency = 5;
-        break;
-    default:
-        dis_assert(0);
-        goto error_exit;
-    }
-
-    if (dis_get_cycle_num() == (inst->data->cycle[STATE_EX] + latency))
-        return TRUE;
-
-error_exit:
-    return FALSE;
+    return ((dis_get_cycle_num() ==
+            (inst->data->cycle[STATE_EX] + inst->data->latency))
+        ? TRUE : FALSE);
 }
 
 
@@ -557,6 +542,7 @@ dis_fetch(struct dis_input *dis)
         new_inst->num = dis_get_next_inst_num(); 
         new_inst->pc = pc;
         new_inst->type = inst_type;
+        new_inst->latency = g_latency[new_inst->type];
         new_inst->dreg = (REG_NO_VALUE == dreg) ? REG_INVALID_VALUE : dreg;
         new_inst->sreg1 = (REG_NO_VALUE == sreg1) ? REG_INVALID_VALUE : sreg1;
         new_inst->sreg2 = (REG_NO_VALUE == sreg2) ? REG_INVALID_VALUE : sreg2;

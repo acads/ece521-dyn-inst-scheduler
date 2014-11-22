@@ -56,6 +56,12 @@ typedef enum inst_type__ {
     TYPE_2      /* latency = 5c */
 } inst_type;
 
+typedef enum inst_latency__ {
+    LATENCY_TYPE_0 = 1,
+    LATENCY_TYPE_1 = 2,
+    LATENCY_TYPE_2 = 5
+} inst_latency;
+
 /* Externs */
 extern uint32_t g_inst_num;
 extern uint32_t g_cycle_num;
@@ -104,6 +110,7 @@ struct dis_inst_data {
     uint8_t     state;              /* fetch/decode/dispatch... */
     uint32_t    pc;                 /* pc as given in trace     */
     uint8_t     type;               /* inst type - 0, 1, 2      */
+    uint8_t     latency;            /* total latency for inst   */
     uint16_t    dreg;               /* dst register             */
     uint16_t    sreg1;              /* src register 1           */
     uint16_t    sreg2;              /* src register 2           */
