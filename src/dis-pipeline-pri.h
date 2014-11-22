@@ -30,11 +30,21 @@ dis_inst_get_state(struct dis_inst_node *inst_node)
     return inst_node->data->state;
 }
 
+
+/* Sets the cycle history of the given state to curr cycle. */
 static inline void
 dis_inst_set_cycle(struct dis_inst_node *inst_node, uint32_t state)
 {
     inst_node->data->cycle[state] = dis_get_cycle_num();
     return;
+}
+
+
+/* Returns the cycle history for the given state. */
+static inline uint32_t
+dis_inst_get_state_cycle(struct dis_inst_node *inst_node, uint32_t state)
+{
+    return inst_node->data->cycle[state];
 }
 
 

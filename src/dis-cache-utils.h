@@ -38,7 +38,6 @@
 #define dprint_dp(str, ...) printf(str, ##__VA_ARGS__)
 #define dprint_dbg(str, ...) printf(str, ##__VA_ARGS__)
 #endif
-#define dprint_dbg(str, ...)
 #define dprint_dp(str, ...)  
 
 #ifdef DBG_ON

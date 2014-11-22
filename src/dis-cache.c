@@ -20,6 +20,7 @@
 #include "dis-print.h"
 #include "dis-cache.h"
 #include "dis-cache-utils.h"
+#include "dis-cache-print.h"
 
 #ifdef dprint_info
 #undef dprint_info
@@ -68,7 +69,7 @@ cache_init(cache_generic_t *l1_cache, cache_generic_t *vic_cache,
         cache_generic_t *l2_cache, int num_args, char **input)
 {
     char        *trace_file = NULL;
-    uint8_t     arg_iter = 1;
+    uint8_t     arg_iter = 0;
     uint32_t    blk_size = 0;
     uint32_t    l1_size = 0;
     uint16_t    l1_set_assoc = 0;
@@ -88,13 +89,12 @@ cache_init(cache_generic_t *l1_cache, cache_generic_t *vic_cache,
      * ... <block-size> <l1-cache-size> <l1-set-assoc>
      *                  <l2-cache-size> <l2-set-assoc> ...
      */
+    g_victim_present =  FALSE;
+
     blk_size = atoi(input[arg_iter++]);
     l1_size = atoi(input[arg_iter++]);
     l1_set_assoc = atoi(input[arg_iter++]);
     
-    victim_size = atoi(input[arg_iter++]);
-    g_victim_present = (victim_size ? TRUE : FALSE);
-
     l2_size = atoi(input[arg_iter++]);
     g_l2_present = (l2_size ? TRUE : FALSE);
     l2_set_assoc = atoi(input[arg_iter++]);
@@ -645,6 +645,7 @@ void
 cache_handle_dirty_tag_evicts(cache_generic_t *cache, mem_ref_t *mem_ref, 
         uint32_t block_id)
 {
+    uint16_t            latency = 0;
     uint32_t            tag_index = 0;
     uint32_t            *tags = NULL;
     cache_line_t        line;
@@ -701,7 +702,7 @@ cache_handle_dirty_tag_evicts(cache_generic_t *cache, mem_ref_t *mem_ref,
         dprint_info("%s writing dirty block [%u, %d] to next level due "    \
                 "to eviction", CACHE_GET_NAME(cache), line.index, block_id);
 
-        cache_evict_and_add_tag(cache->next_cache, &write_ref);
+        cache_evict_and_add_tag(cache->next_cache, &write_ref, &latency);
     } else {
         dprint_dp("LRU WRITE TO MEMORY, INDEX %u, BLOCK %d, DIRTY %u\n",
             line.index, block_id, 
@@ -849,10 +850,12 @@ error_exit:
  * Returns: Nothing.
  **************************************************************************/
 void
-cache_evict_and_add_tag(cache_generic_t *cache, mem_ref_t *mref)
+cache_evict_and_add_tag(cache_generic_t *cache, mem_ref_t *mref,
+        uint16_t *latency)
 {
     uint8_t             read_flag = FALSE;
     int32_t             block_id = 0;
+    uint16_t            tmp_latency = 0;
     uint32_t            tag_index = 0;
     uint32_t            *tags = NULL;
     uint64_t            curr_age;
@@ -925,6 +928,13 @@ cache_evict_and_add_tag(cache_generic_t *cache, mem_ref_t *mref)
          *
          * Life is good!
          */
+
+        /* Update the latency based on the cache type. */
+        if (CACHE_LEVEL_1 == cache->level)
+            *latency = (CACHE_L1_HIT_LATENCY);
+        else if (CACHE_LEVEL_2 == cache->level)
+            *latency = (CACHE_L1_HIT_LATENCY) + (CACHE_L2_HIT_LATENCY);
+
         dprint_dbg("HIT %s\n", CACHE_GET_NAME(cache));
         dprint_info("cache hit for cache %s, tag 0x%x at index %u, block %u\n",
                 CACHE_GET_NAME(cache), line.tag, line.index, block_id);
@@ -1116,7 +1126,7 @@ cache_evict_and_add_tag(cache_generic_t *cache, mem_ref_t *mref)
                     CACHE_GET_NAME(cache), CACHE_GET_NAME(next_cache), 
                     read_ref.ref_addr, line.tag);
 
-            cache_evict_and_add_tag(next_cache, &read_ref);
+            cache_evict_and_add_tag(next_cache, &read_ref, &tmp_latency);
 
             tags[block_id] = line.tag;
             cache->stats.num_blk_mem_traffic += 1;
@@ -1137,6 +1147,10 @@ cache_evict_and_add_tag(cache_generic_t *cache, mem_ref_t *mref)
             dprint_info("%s, tag 0x%x added to index %u, block %u\n", 
                     CACHE_GET_NAME(cache), line.tag, line.index, block_id);
         } else {
+            /* If we are here, we are at a total loss for latency. No matter
+             * L1 miss or L2 miss.
+             */
+            *latency = CACHE_TOTAL_MISS_LATENCY;
             /*
              * Find a block to place the to-be-fetcheed data. Go for
              * block eviction, if no free blocks are available.
@@ -1197,7 +1211,8 @@ exit:
  *  FALSE otherwise 
  **************************************************************************/
 boolean
-cache_handle_memory_request(cache_generic_t *cache, mem_ref_t *mref)
+cache_handle_memory_request(cache_generic_t *cache, mem_ref_t *mref,
+        uint16_t *latency)
 {
     cache_line_t line;
 
@@ -1214,7 +1229,7 @@ cache_handle_memory_request(cache_generic_t *cache, mem_ref_t *mref)
     cache_util_decode_mem_addr(cache->tagstore, mref->ref_addr, &line);
 
     /* Cache pipeline starts here. */
-    cache_evict_and_add_tag(cache, mref);
+    cache_evict_and_add_tag(cache, mref, latency);
 
     return TRUE;
 

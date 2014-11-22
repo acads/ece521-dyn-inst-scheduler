@@ -20,6 +20,7 @@
 #include "dis-print.h"
 #include "dis-pipeline.h"
 #include "dis-pipeline-pri.h"
+#include "dis-cache.h"
 #include "utlist.h"
 
 /* Private globals. */
@@ -93,6 +94,42 @@ dis_execute_is_over(struct dis_input *dis, struct dis_inst_node *inst)
     return ((dis_get_cycle_num() ==
             (inst->data->cycle[STATE_EX] + inst->data->latency))
         ? TRUE : FALSE);
+}
+
+
+/* Do a cache lookup on the given memory address. */
+static void
+dis_exec_cache_lookup(struct dis_input *dis, struct dis_inst_node *inst)
+{
+    mem_ref_t   mref;
+    uint16_t    cache_latency = 0;
+
+    if (!inst) {
+        dis_assert(0);
+        goto error_exit;
+    }
+
+    if (!inst->data->mem_addr) {
+        dis_assert(0);
+        goto error_exit;
+    }
+
+    memset(&mref, 0, sizeof(mref));
+    mref.ref_type = MEM_REF_TYPE_READ;
+    mref.ref_addr = inst->data->mem_addr;
+
+    if (cache_handle_memory_request(dis->l1, &mref, &cache_latency)) {
+        dprint_info("data cache hit, cache latency %u\n", cache_latency);
+    } else {
+        cache_latency = CACHE_TOTAL_MISS_LATENCY;
+        dprint_info("data cache hit, cache latency %u\n", cache_latency);
+    }
+
+    /* Add the cache latency to the execute latency of the inst. */
+    inst->data->latency += cache_latency;
+
+error_exit:
+    return;
 }
 
 
@@ -193,6 +230,17 @@ dis_execute(struct dis_input *dis)
     }
 
     DL_FOREACH_SAFE(dis->list_exec->list, iter, tmp) {
+        /* Do a cache lookup for memory insts. */
+        if (iter->data->mem_addr && dis->l1) {
+            /* Cache lookups only when the inst is exectued for the first
+             * time.
+             */
+            if ((dis_get_cycle_num() - 1) ==
+                    dis_inst_get_state_cycle(iter, STATE_EX)) {
+                dis_exec_cache_lookup(dis, iter);
+            }
+        }
+
         if (dis_execute_is_over(dis, iter)) {
             /* Done with this inst. Change state to WB and remove it from the
              * exec list.

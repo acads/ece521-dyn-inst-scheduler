@@ -35,6 +35,11 @@
 #define MEM_REF_TYPE_READ       'r'
 #define MEM_REF_TYPE_WRITE      'w'
 
+#define CACHE_L1_HIT_LATENCY        5
+#define CACHE_L1_MISS_LATENCY       10
+#define CACHE_L2_HIT_LATENCY        10
+#define CACHE_TOTAL_MISS_LATENCY    20
+
 /* Standard typedefs */
 typedef unsigned char uchar;
 typedef unsigned char boolean;
@@ -137,7 +142,8 @@ cache_tagstore_init(cache_generic_t *cache, cache_tagstore_t *tagstore);
 void
 cache_tagstore_cleanup(cache_generic_t *cache, cache_tagstore_t *tagstore);
 boolean
-cache_handle_memory_request(cache_generic_t *cache, mem_ref_t *mem_ref);
+cache_handle_memory_request(cache_generic_t *cache, mem_ref_t *mem_ref,
+        uint16_t *latency);
 void
 cache_handle_read_request(cache_generic_t *cache, mem_ref_t *mem_ref, 
         cache_line_t *line);
@@ -160,7 +166,8 @@ void
 cache_handle_dirty_tag_evicts(cache_generic_t *cache, mem_ref_t *mem_ref, 
         uint32_t block_id);
 void
-cache_evict_and_add_tag(cache_generic_t *cache, mem_ref_t *mem_ref);
+cache_evict_and_add_tag(cache_generic_t *cache, mem_ref_t *mem_ref,
+        uint16_t *latency);
 
 #if 0
 inline void

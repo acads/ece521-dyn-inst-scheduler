@@ -222,6 +222,11 @@ static bool
 dis_parse_input(int argc, char **argv, struct dis_input *dis)
 {
     uint8_t     arg_iter = 0;
+    uint32_t    blk_size = 0;
+    uint32_t    l1_cache_size = 0;
+    uint32_t    l1_set_assoc = 0;
+    uint32_t    l2_cache_size = 0;
+    uint32_t    l2_set_assoc = 0;
 
     if (!dis) { 
         dis_assert(0);
@@ -247,11 +252,24 @@ dis_parse_input(int argc, char **argv, struct dis_input *dis)
     dis->s = atoi(argv[++arg_iter]);
     dis->n = atoi(argv[++arg_iter]);
 
-    cache_init(dis->l1, NULL, dis->l2, argc, argv + arg_iter);
+    blk_size = atoi(argv[++arg_iter]);
+    l1_cache_size = atoi(argv[++arg_iter]);
+    l1_set_assoc = atoi(argv[++arg_iter]);
+    l2_cache_size = atoi(argv[++arg_iter]);
+    l2_set_assoc = atoi(argv[++arg_iter]);
 
+    if (blk_size) {
+        cache_init(dis->l1, NULL, dis->l2, argc, argv + arg_iter + 1);
         cache_tagstore_init(dis->l1, &g_dis_l1_ts);
-   
-    arg_iter += 5; /* ignore cache specific input */ 
+
+        if (l2_cache_size)
+            cache_tagstore_init(dis->l2, &g_dis_l2_ts);
+        else
+            dis->l2 = NULL;
+    } else {
+        dis->l1 = dis->l2 = NULL;
+    }
+
     strncpy(dis->tracefile, argv[++arg_iter], MAX_FILE_NAME_LEN);
     return TRUE;
 
