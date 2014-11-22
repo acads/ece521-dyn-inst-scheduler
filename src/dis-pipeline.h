@@ -12,11 +12,34 @@
 #define DIS_PIPELINE_H_
 
 /* Inline functions */
+/* Returns the length of the given list. */
+static inline uint32_t
+dis_inst_list_get_len(struct dis_input *dis, uint8_t list)
+{
+    switch (list) {
+    case LIST_INST:
+        return dis->list_inst->len;
+    case LIST_DISP:
+        return dis->list_disp->len;
+    case LIST_ISSUE:
+        return dis->list_issue->len;
+    case LIST_EXEC:
+        return dis->list_exec->len;
+    case LIST_WBACK:
+        return dis->list_wback->len;
+    default:
+        dis_assert(0);
+        return 0;
+    }
+}
+
 /* Increments the global cycle counter and returns the new value. */
 static inline uint32_t
-dis_run_cycle(void)
+dis_run_cycle(struct dis_input *dis)
 {
-    return ++g_cycle_num;
+    return ((dis_inst_list_get_len(dis, LIST_DISP) ||
+                dis_inst_list_get_len(dis, LIST_ISSUE) ||
+                dis_inst_list_get_len(dis, LIST_EXEC)) && (++g_cycle_num));
 }
 
 

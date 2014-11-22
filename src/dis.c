@@ -138,6 +138,11 @@ dis_cleanup(struct dis_input *dis)
         dis->list_wback = NULL;
     }
 
+    if (g_trace_fptr) {
+        fclose(g_trace_fptr);
+        g_trace_fptr = NULL;
+    }
+
     return;
 }
 
@@ -178,50 +183,36 @@ dis_parse_tracefile(struct dis_input *dis)
         /* Dispatch stage. */
         dis_dispatch(dis);
 
-        if (!trace_done) {
-            if (!dis_fetch(dis)) {
-                /* Done with tracefile. Close it. */
-                trace_done = TRUE;
-                fclose(g_trace_fptr);
-            }
+        /* Fetch stage. */
+        if (!trace_done && !dis_fetch(dis)) {
+            /* Done fetching all the insts from the trace file. No more
+             * fetch stages. The tracefile will be closed as part of cleanup.
+             */
+            trace_done = TRUE;
         }
 
 #ifdef DBG_ON
-    /* Print all inst fetched so far. */
-    dis_print_list(dis, LIST_INST);
-    dis_print_list(dis, LIST_DISP);
-    dis_print_list(dis, LIST_ISSUE);
-    dis_print_list(dis, LIST_EXEC);
-    dis_print_list(dis, LIST_WBACK);
+        /* Print all inst fetched so far. */
+        dis_print_list(dis, LIST_INST);
+        dis_print_list(dis, LIST_DISP);
+        dis_print_list(dis, LIST_ISSUE);
+        dis_print_list(dis, LIST_EXEC);
+        dis_print_list(dis, LIST_WBACK);
 #endif /* DBG_ON */
-        if (trace_done)
-            break;
-
-#if 0
-        dis_inst_writeback();
-        dis_inst_retire();
-#endif
-    } while (dis_run_cycle());
+    } while (dis_run_cycle(dis));
 
 #ifdef DBG_ON
     dis_print_rmt(dis, REG_INVALID_VALUE);
 #endif /* DBG_ON */
 
-#if 0
-    /* Print all inst fetched so far. */
-    dis_print_list(dis, LIST_INST);
-    dis_print_list(dis, LIST_DISP);
-    dis_print_list(dis, LIST_ISSUE);
-    dis_print_list(dis, LIST_EXEC);
-    dis_print_list(dis, LIST_WBACK);
-#endif
-
+    /* Done with all the inst execution. Print the stats and be gone. */
     dis_print_inst_stats(dis);
     return TRUE;
 
 error_exit:
     return FALSE;
 }
+
 
 /*
  * Parse and validate the given input parameters. If good, store them
@@ -298,6 +289,7 @@ error_exit:
     return FALSE;
 }
 
+
 /* 42: Life, the Universe and Everything; including inst. schedulers. */
 int
 main(int argc, char **argv)
@@ -316,8 +308,10 @@ main(int argc, char **argv)
     dis_print_input_data(dis);
 #endif /* DBG_ON */
 
+    /* Parse/read the tracefile and begin the pipeline by putting the read
+     * inst onto the fetch stage.
+     */
     dis_parse_tracefile(dis);
-
     return 0;
 
 error_exit:

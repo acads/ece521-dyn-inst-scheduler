@@ -60,9 +60,24 @@ dis_print_inst_stats(struct dis_input *dis)
 {
     struct dis_inst_node *iter = NULL;
 
+    /* First, sort and print all instruction entries with timing info. */
     DL_SORT(dis->list_wback->list, dis_cb_cmp);
     DL_FOREACH(dis->list_wback->list, iter)
         dis_print_inst_entry_stats(dis, iter);
+
+    /* Now, the scheduler configuration. */
+    dprint("CONFIGURATION\n");
+    dprint(" superscalar bandwidth (N) = %u\n", dis->n);
+    dprint(" dispatch queue size (2*N) = %u\n", (dis->n * 2));
+    dprint(" schedule queue size (S)   = %u\n", dis->s);
+
+    /* Finally, some scheduler performance numbers. */
+    dprint("RESULTS\n");
+    dprint(" number of instructions = %u\n", dis_get_inst_num());
+    dprint(" number of cycles       = %u\n", dis_get_cycle_num() + 1);
+    dprint(" IPC                    = %.2f\n",
+            (double) ((double) dis_get_inst_num() /
+                        (double) (dis_get_cycle_num() + 1)));
 
     return;
 }

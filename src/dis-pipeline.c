@@ -238,28 +238,6 @@ error_exit:
 }
 
 
-/* Put the give inst on issue list, provided the list has room. */
-static bool
-dis_issue_push_inst(struct dis_input *dis, struct dis_inst_node *inst)
-{
-    if (dis_can_push_on_list(dis, LIST_ISSUE)) {
-        struct dis_inst_node    *node = NULL;
-
-        node = (struct dis_inst_node *) calloc(1, sizeof(*node));
-        node->data = inst->data;
-
-        memcpy(&node->sreg1, dis->rmt[inst->data->sreg1], sizeof(node->sreg1));
-        memcpy(&node->sreg2, dis->rmt[inst->data->sreg2], sizeof(node->sreg2));
-        memcpy(&node->dreg, dis->rmt[inst->data->dreg], sizeof(node->dreg));
-
-        DL_APPEND(dis->list_issue->list, node);
-        dis_inst_list_increment_len(dis, LIST_ISSUE);
-        return TRUE;
-    }
-    return FALSE;
-}
-
-
 /*
  * Checks whether all the operands are ready (TRUE) or not (FALSE) for a
  * given inst.
@@ -550,7 +528,6 @@ dis_fetch(struct dis_input *dis)
     uint32_t    mem_addr = 0;
 
     struct dis_inst_data *new_inst = NULL;
-    struct dis_inst_node *iter = NULL;
     struct dis_inst_node *new_inst_node = NULL;
 
     if (!dis) {
@@ -558,21 +535,22 @@ dis_fetch(struct dis_input *dis)
         goto error_exit;
     }
 
-    /*
-     * Each trace entry is of the format:
+    /* Each trace entry is of the format:
      * <PC> <inst-type> <dst-reg> <src-reg-1> <src-reg-2> <mem-addr>
      *
      * Refer to section 3 in docs/pa2_spec.pdf for more.
      */
 
-    for (inst_i = 0; inst_i < dis->n; ++inst_i) {
+    for (inst_i = 0;
+            ((inst_i < dis->n) && (dis_can_push_on_list(dis, LIST_DISP)));
+            ++inst_i) {
         /* DAN_TODO: Check for other fetch conditions here. */
         fscanf_rv = fscanf(g_trace_fptr, "%x %u %d %d %d %x%c",
             &pc, &inst_type, &dreg, &sreg1, &sreg2, &mem_addr, &newline);
 
         /* Return if there are no more entries to fetch. */
         if (EOF == fscanf_rv)
-            return FALSE;
+            goto error_exit;
 
         /* Create and add the fetched inst to the inst list. */
         new_inst = (struct dis_inst_data *) calloc(1, sizeof(*new_inst));
@@ -596,23 +574,21 @@ dis_fetch(struct dis_input *dis)
         dprint_info("inst %u, NA-->IF, trace(%u)-->inst(%u), cycle %u\n",
                 new_inst->num, 0, dis_inst_list_get_len(dis, LIST_INST),
                 dis_get_cycle_num());
-    }
 
-    /* Put the inst on the dispatch list and sort it based on inum. */
-    DL_FOREACH(dis->list_inst->list, iter) {
-        if (STATE_IF != dis_inst_get_state(iter))
-            continue;
-
-        if (dis_dispatch_push_inst(dis, iter)) {
+        if (dis_dispatch_push_inst(dis, new_inst_node)) {
             dprint_info("inst %u, IF-->IF, inst(%u)-->disp(%u), cycle %u\n",
                 new_inst->num, dis_inst_list_get_len(dis, LIST_INST),
                 dis_inst_list_get_len(dis, LIST_DISP), dis_get_cycle_num());
         } else {
-            break;
+            /* We checked whether disp list could accept more inst before
+             * fetching. So, addition to disp list shouldn't fail at this
+             * stage.
+             */
+            dis_assert(0);
+            goto error_exit;
         }
     }
     DL_SORT(dis->list_disp->list, dis_cb_cmp);
-
     return TRUE;
 
 error_exit:
