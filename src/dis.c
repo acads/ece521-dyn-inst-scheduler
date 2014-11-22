@@ -222,9 +222,6 @@ static bool
 dis_parse_input(int argc, char **argv, struct dis_input *dis)
 {
     uint8_t     arg_iter = 0;
-    uint32_t    cache_size = 0;
-    uint32_t    cache_assoc = 0;
-    uint32_t    cache_blk_size = 0;
 
     if (!dis) { 
         dis_assert(0);
@@ -249,39 +246,12 @@ dis_parse_input(int argc, char **argv, struct dis_input *dis)
      */
     dis->s = atoi(argv[++arg_iter]);
     dis->n = atoi(argv[++arg_iter]);
-    
-    cache_blk_size = atoi(argv[++arg_iter]);
-    cache_size = atoi(argv[++arg_iter]);
-    cache_assoc = atoi(argv[++arg_iter]);
-    if (!cache_size || !cache_assoc) {
-        dis->l1 = NULL;
-    } else {
-        cache_init(dis->l1, "L1 cache", "", CACHE_LEVEL_1);
-        dis->l1->size = cache_size;
-        dis->l1->set_assoc = cache_assoc;
-        dis->l1->blk_size = cache_blk_size;
-        dis->l1->repl_plcy = CACHE_REPL_PLCY_LRU;
-        dis->l1->write_plcy = CACHE_WRITE_PLCY_WBWA;
+
+    cache_init(dis->l1, NULL, dis->l2, argc, argv + arg_iter);
+
         cache_tagstore_init(dis->l1, &g_dis_l1_ts);
-    }
-    
-    cache_size = atoi(argv[++arg_iter]);
-    cache_assoc = atoi(argv[++arg_iter]);
-    if (!cache_size || !cache_assoc) {
-        dis->l2 = NULL;
-    } else {
-        cache_init(dis->l2, "L2 cache", "", CACHE_LEVEL_2);
-        dis->l2->size = cache_size;
-        dis->l2->set_assoc = cache_assoc;
-        dis->l2->blk_size = cache_blk_size;
-        dis->l2->repl_plcy = CACHE_REPL_PLCY_LRU;
-        dis->l2->write_plcy = CACHE_WRITE_PLCY_WBWA;
-        cache_tagstore_init(dis->l2, &g_dis_l2_ts);
-
-        dis->l1->next_cache = dis->l2;
-        dis->l2->prev_cache = dis->l1;
-    }
-
+   
+    arg_iter += 5; /* ignore cache specific input */ 
     strncpy(dis->tracefile, argv[++arg_iter], MAX_FILE_NAME_LEN);
     return TRUE;
 

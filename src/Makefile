@@ -15,10 +15,11 @@ PROG = sim
 INCLS = -I.
 SRCS = dis.c \
        dis-utils.c \
+       dis-pipeline.c \
+       dis-print.c \
        dis-cache.c \
        dis-cache-utils.c \
-       dis-pipeline.c \
-       dis-print.c
+       dis-cache-print.c
 OBJS = $(SRCS:.c=.o)
 CLEANFILES = $(PROG) $(OBJS)
 

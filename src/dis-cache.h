@@ -1,19 +1,15 @@
 /* 
  * ECE 521 - Computer Design Techniques, Fall 2014
- * Project 2 - Branch Predictor Implementation
+ * Project 3 - Dynamic Instruction Scheduler 
  *
- * This module contains almost all required data structures, constants and
- * function declrations for BTB implementation for branch predictor.
+ * This module implements the constants, data structures and function 
+ * declarations for data caches required for the dynamic instrction scheduler. 
  *
  * Author: Aravindhan Dhanasekaran <adhanas@ncsu.edu>
  */
 
-#ifndef BP_BTB_H_
-#define BP_BTB_H_
-
-#ifndef bool
-#define bool unsigned char
-#endif /* !bool */
+#ifndef DIS_CACHE_H_
+#define DIS_CACHE_H_
 
 /* Constants */
 #ifndef TRUE
@@ -26,10 +22,10 @@
 #define CACHE_LEVEL_1           1
 #define CACHE_LEVEL_2           2
 #define CACHE_LEVEL_3           3
+#define CACHE_LEVEL_L1_VICTIM   6
 #define CACHE_NAME_LEN          24
 #define CACHE_ADDR_32BIT_LEN    32
 #define CACHE_TRACE_FILE_LEN    256
-#define CACHE_DEF_BLK_SIZE      4
 
 #define CACHE_REPL_PLCY_LRU     0
 #define CACHE_REPL_PLCY_LFU     1
@@ -76,6 +72,7 @@ typedef struct cache_tagstore__ {
     uint8_t             num_tag_bits;           /* # of bits for tags       */
     uint8_t             num_index_bits;         /* # of bits for index      */
     uint8_t             num_offset_bits;        /* # of bits for blk offset */
+    uint8_t             *lru_block_id;          /* LRU block within the set */
     uint32_t            *index;                 /* ptr to tag indices       */
     uint32_t            *tags;                  /* ptr to tag array         */
     cache_tag_data_t    *tag_data;              /* ptr to tag stats         */
@@ -84,6 +81,7 @@ typedef struct cache_tagstore__ {
 
 /* Cache statistics data structure */
 typedef struct cache_stats__ {
+    uint32_t            num_swaps;              /* L1 & VC swaps            */
     uint32_t            num_reads;              /* # of reads               */
     uint32_t            num_writes;             /* # of writes              */
     uint32_t            num_read_hits;          /* # of read hits           */ 
@@ -105,27 +103,40 @@ typedef struct cache_generic__ {
     uint32_t            size;                   /* total cache size         */
     uint8_t             repl_plcy;              /* replacement policy       */
     uint8_t             write_plcy;             /* write policy             */
+    uint32_t            victim_size;            /* victim cache size        */
     cache_stats_t       stats;                  /* cache statistics         */
     cache_tagstore_t    *tagstore;              /* associated tagstore      */
     struct cache_generic__ *next_cache;         /* next higher level cache  */
     struct cache_generic__ *prev_cache;         /* prev lower level cache   */
-    uint32_t            nhits;
-    uint32_t            nmisses;
-    uint32_t            nmiss_predicts;
 } cache_generic_t;
+
+
+/* Externs */
+extern boolean          g_l2_present;
+extern boolean          g_victim_present;
+extern cache_generic_t  g_l1_cache;
+extern cache_generic_t  g_l2_cache;
+extern cache_generic_t  g_vic_cache;
+extern const char       *g_dirty;
+extern const char       *g_l1_name;
+extern const char       *g_l2_name;
+extern const char       *g_vic_name;
+extern const char       *g_read;
+extern const char       *g_write;
+extern uint32_t         g_addr_count;
 
 
 /* Function declarations */
 void
-cache_init(cache_generic_t *pcache, const char *name, 
-        const char *trace_file, uint8_t level);
+cache_init(cache_generic_t *l1_cache, cache_generic_t *vic_cache,
+        cache_generic_t *l2_cache, int num_args, char **argv);
 void
 cache_cleanup(cache_generic_t *pcache);
 void
 cache_tagstore_init(cache_generic_t *cache, cache_tagstore_t *tagstore);
 void
 cache_tagstore_cleanup(cache_generic_t *cache, cache_tagstore_t *tagstore);
-bool
+boolean
 cache_handle_memory_request(cache_generic_t *cache, mem_ref_t *mem_ref);
 void
 cache_handle_read_request(cache_generic_t *cache, mem_ref_t *mem_ref, 
@@ -146,10 +157,19 @@ cache_get_lfu_block(cache_tagstore_t *tagstore, mem_ref_t *mref,
 int32_t
 cache_evict_tag(cache_generic_t *cache, mem_ref_t *mref, cache_line_t *line);
 void
-cache_handle_dirty_tag_evicts(cache_tagstore_t *tagstore, cache_line_t *line, 
+cache_handle_dirty_tag_evicts(cache_generic_t *cache, mem_ref_t *mem_ref, 
         uint32_t block_id);
 void
-cache_print_sim_data(cache_generic_t *cache);
+cache_evict_and_add_tag(cache_generic_t *cache, mem_ref_t *mem_ref);
 
-#endif /* BP_BTB_H_ */
+#if 0
+inline void
+cache_set_current_cache(cache_generic_t *cache, cache_tagstore_t *tagstore);
+inline cache_generic_t *
+cache_get_current_cache(void);
+inline cache_tagstore_t *
+cache_util_get_current_ts();
+#endif
+
+#endif /* DIS_CACHE_H_ */
 
