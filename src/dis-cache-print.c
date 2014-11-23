@@ -91,7 +91,7 @@ cache_print_sim_stats(cache_generic_t *cache)
     double          l2_miss_rate = 0.0;
     double          l2_miss_penalty = 0.0;
     boolean         l2_present = FALSE;
-    cache_stats_t   *l2_stats;
+    cache_stats_t   *l2_stats = NULL;
     cache_generic_t *l2 = NULL;
 
     double          miss_penalty = 0.0;
