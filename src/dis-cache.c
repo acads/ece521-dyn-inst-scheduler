@@ -855,7 +855,6 @@ cache_evict_and_add_tag(cache_generic_t *cache, mem_ref_t *mref,
 {
     uint8_t             read_flag = FALSE;
     int32_t             block_id = 0;
-    uint16_t            tmp_latency = 0;
     uint32_t            tag_index = 0;
     uint32_t            *tags = NULL;
     uint64_t            curr_age;
@@ -933,7 +932,7 @@ cache_evict_and_add_tag(cache_generic_t *cache, mem_ref_t *mref,
         if (CACHE_LEVEL_1 == cache->level)
             *latency = (CACHE_L1_HIT_LATENCY);
         else if (CACHE_LEVEL_2 == cache->level)
-            *latency = (CACHE_L1_HIT_LATENCY) + (CACHE_L2_HIT_LATENCY);
+            *latency = (CACHE_L2_HIT_LATENCY);
 
         dprint_dbg("HIT %s\n", CACHE_GET_NAME(cache));
         dprint_info("cache hit for cache %s, tag 0x%x at index %u, block %u\n",
@@ -1126,7 +1125,7 @@ cache_evict_and_add_tag(cache_generic_t *cache, mem_ref_t *mref,
                     CACHE_GET_NAME(cache), CACHE_GET_NAME(next_cache), 
                     read_ref.ref_addr, line.tag);
 
-            cache_evict_and_add_tag(next_cache, &read_ref, &tmp_latency);
+            cache_evict_and_add_tag(next_cache, &read_ref, latency);
 
             tags[block_id] = line.tag;
             cache->stats.num_blk_mem_traffic += 1;

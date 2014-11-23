@@ -256,7 +256,7 @@ cache_print_cache_data(cache_generic_t *cache)
             break;
 
         case CACHE_LEVEL_2:
-            title = "===== L2 contents =====";
+            title = "L2 CACHE CONTENTS";
             break;
         default:
             cache_assert(0);

@@ -25,13 +25,7 @@
 uint32_t                g_inst_num;         /* current instruction #    */
 uint32_t                g_cycle_num;        /* current cycle #          */
 FILE                    *g_trace_fptr;      /* tracefile ptr            */
-
 struct dis_input        g_dis;              /* global dis data          */
-
-cache_generic_t         g_dis_l1;           /* dis l1 data cache        */
-cache_generic_t         g_dis_l2;           /* dis l2 data cache        */
-cache_tagstore_t        g_dis_l1_ts;        /* dis l1 tagstore          */
-cache_tagstore_t        g_dis_l2_ts;        /* dis l2 tagstore          */
 
 
 /* dis init routine */
@@ -47,9 +41,8 @@ dis_init(struct dis_input *dis)
 
     g_inst_num = 0;
     g_cycle_num = 0;
-
-    dis->l1 = &g_dis_l1;
-    dis->l2 = &g_dis_l2;
+    dis->l1 = &g_l1_cache;
+    dis->l2 = &g_l2_cache;
 
     /* Allocate memory for rmt and set the ready bit for all regs. */
     for (i = 0; i < REG_TOTAL; ++i) {
@@ -260,10 +253,10 @@ dis_parse_input(int argc, char **argv, struct dis_input *dis)
 
     if (blk_size) {
         cache_init(dis->l1, NULL, dis->l2, argc, argv + 3);
-        cache_tagstore_init(dis->l1, &g_dis_l1_ts);
+        cache_tagstore_init(dis->l1, &g_l1_cache_ts);
 
         if (l2_cache_size)
-            cache_tagstore_init(dis->l2, &g_dis_l2_ts);
+            cache_tagstore_init(dis->l2, &g_l2_cache_ts);
         else
             dis->l2 = NULL;
     } else {

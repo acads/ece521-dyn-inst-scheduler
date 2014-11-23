@@ -69,7 +69,16 @@ dis_print_inst_stats(struct dis_input *dis)
     /* Print L1 cache data, if present. */
     if (dis->l1) {
         cache_print_cache_data(dis->l1);
+
+        /* Print L2 cache data, if present. */
+        if (dis->l2) {
+            dprint("\n");
+            cache_print_cache_data(dis->l2);
+        }
+
+        dprint("\n");
     }
+
 
     /* Now, the scheduler configuration. */
     dprint("CONFIGURATION\n");
