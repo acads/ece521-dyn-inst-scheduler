@@ -11,8 +11,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-#include <unistd.h>
-#include <sys/time.h>
 
 #include "dis.h"
 #include "dis-utils.h"

@@ -25,6 +25,7 @@ CLEANFILES = $(PROG) $(OBJS)
 
 
 # Command line options
+#
 # The debug code can be truned on using the following variable from
 # the command line while invoking make.
 #
@@ -36,15 +37,19 @@ CLEANFILES = $(PROG) $(OBJS)
 #
 DEBUG = -g -pg -D DBG_ON
 #DEBUG =
-GRAPH =
-#GRAPH = -D GRAPH_OUTPUT
 
 
 # Compiler options
-CC = gcc
-OPTIMIZER = -O0
-WARN =
+#
+# By default, all warnings are treated as errors and unused-but-set warning
+# is suppressed. To modify the warnings settings, uncomment/comment the
+# appropriate lines below.
+#
+#WARN =
 #WARN = -Wunused-but-set-variable -Werror -Wall
+WARN = -Wno-unused-but-set-variable -Werror -Wall
+CC = gcc
+OPTIMIZER = -O5
 CFLAGS = -c -Wall $(DEBUG) $(GRAPH) $(WARN) $(OPTIMIZER) $(INCLS) -g
 LFLAGS = -Wall $(DEBUG) $(GRAPH) $(WARN) $(OPTIMIZER) $(INCLS) -g
 

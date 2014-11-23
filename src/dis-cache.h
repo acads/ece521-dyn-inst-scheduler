@@ -172,14 +172,5 @@ void
 cache_evict_and_add_tag(cache_generic_t *cache, mem_ref_t *mem_ref,
         uint16_t *latency);
 
-#if 0
-inline void
-cache_set_current_cache(cache_generic_t *cache, cache_tagstore_t *tagstore);
-inline cache_generic_t *
-cache_get_current_cache(void);
-inline cache_tagstore_t *
-cache_util_get_current_ts();
-#endif
-
 #endif /* DIS_CACHE_H_ */
 

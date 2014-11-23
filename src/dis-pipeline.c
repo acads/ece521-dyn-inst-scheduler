@@ -12,8 +12,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-#include <unistd.h>
-#include <sys/time.h>
 
 #include "dis.h"
 #include "dis-utils.h"
@@ -453,14 +451,12 @@ dis_dispatch(struct dis_input *dis)
 {
     struct dis_inst_node    *tmp = NULL;
     struct dis_inst_node    *iter = NULL;
-    struct dis_inst_node    *list = NULL;
     struct dis_inst_node    *node = NULL;
 
     if (!dis) {
         dis_assert(0);
         goto error_exit;
     }
-    list = dis->list_disp->list;
 
     /* First move as many inst as possile from ID to IS, then onto issue
      * list and remove them from dispatch list.
