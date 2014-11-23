@@ -35,8 +35,8 @@ CLEANFILES = $(PROG) $(OBJS)
 # 	2. Program profile data collector
 # 	3. Enable debug traces in teh actual progran code.
 #
-DEBUG = -g -pg -D DBG_ON
-#DEBUG =
+DEBUG =
+#DEBUG = -g -pg -D DBG_ON
 
 
 # Compiler options
@@ -50,8 +50,8 @@ DEBUG = -g -pg -D DBG_ON
 WARN = -Wno-unused-but-set-variable -Werror -Wall
 CC = gcc
 OPTIMIZER = -O5
-CFLAGS = -c -Wall $(DEBUG) $(GRAPH) $(WARN) $(OPTIMIZER) $(INCLS) -g
-LFLAGS = -Wall $(DEBUG) $(GRAPH) $(WARN) $(OPTIMIZER) $(INCLS) -g
+CFLAGS = -c -Wall $(DEBUG) $(GRAPH) $(WARN) $(OPTIMIZER) $(INCLS)
+LFLAGS = -Wall $(DEBUG) $(GRAPH) $(WARN) $(OPTIMIZER) $(INCLS)
 
  
 # Make directives
