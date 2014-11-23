@@ -22,13 +22,16 @@
 #include "utlist.h"
 
 /* Globals */
-uint32_t                g_inst_num;         /* current instruction #    */
-uint32_t                g_cycle_num;        /* current cycle #          */
-FILE                    *g_trace_fptr;      /* tracefile ptr            */
-struct dis_input        g_dis;              /* global dis data          */
+uint32_t            g_inst_num;         /* current instruction #    */
+uint32_t            g_cycle_num;        /* current cycle #          */
+FILE                *g_trace_fptr;      /* tracefile ptr            */
+struct dis_input    g_dis;              /* global dis data          */
 
 
-/* dis init routine */
+/*
+ * DIS init routine. Called during startup. Allocate memory for required data 
+ * structures and initialize them as required.
+ */
 static void
 dis_init(struct dis_input *dis)
 {
@@ -68,7 +71,11 @@ exit:
     return;
 }
 
-/* dis cleanup routine */
+
+/*
+ * DIS cleanup code. Usually called in exit path. Free all memory allocated
+ * for various lists, RMT and caches.
+ */
 static void
 dis_cleanup(struct dis_input *dis)
 {
@@ -76,9 +83,60 @@ dis_cleanup(struct dis_input *dis)
     struct dis_inst_node    *iter = NULL;
     struct dis_inst_node    *tmp = NULL;
 
+    /* Close the trace file pointer. */
+    if (g_trace_fptr) {
+        fclose(g_trace_fptr);
+        g_trace_fptr = NULL;
+    }
+
+    /* Free cache and tagstores. */
+    if (dis->l1) {
+        if (dis->l2) {
+            cache_cleanup(dis->l2);
+            dis->l2 = NULL;
+        }
+
+        cache_cleanup(dis->l1);
+        dis->l1 = NULL;
+    }
+
+    /* Free the RMT table. */
     for (i = 0; i <= REG_TOTAL; ++i) {
         free(dis->rmt[i]);
         dis->rmt[i] = NULL;
+    }
+
+    /* Free various lists. */
+    if (dis->list_disp) {
+        DL_FOREACH_SAFE(dis->list_disp->list, iter, tmp)
+            free(iter);
+        iter = tmp = NULL;
+        free(dis->list_disp);
+        dis->list_disp = NULL;
+    }
+
+    if (dis->list_issue) {
+        DL_FOREACH_SAFE(dis->list_issue->list, iter, tmp)
+            free(iter);
+        iter = tmp = NULL;
+        free(dis->list_issue);
+        dis->list_issue = NULL;
+    }
+
+    if (dis->list_exec) {
+        DL_FOREACH_SAFE(dis->list_exec->list, iter, tmp)
+            free(iter);
+        iter = tmp = NULL;
+        free(dis->list_exec);
+        dis->list_exec = NULL;
+    }
+
+    if (dis->list_wback) {
+        DL_FOREACH_SAFE(dis->list_wback->list, iter, tmp)
+            free(iter);
+        iter = tmp = NULL;
+        free(dis->list_wback);
+        dis->list_wback = NULL;
     }
 
     if (dis->list_inst) {
@@ -91,60 +149,18 @@ dis_cleanup(struct dis_input *dis)
         dis->list_inst = NULL;
     }
 
-    if (dis->list_disp) {
-        DL_FOREACH_SAFE(dis->list_disp->list, iter, tmp) {
-            free(iter->data);
-            free(iter);
-        }
-        iter = tmp = NULL;
-        free(dis->list_disp);
-        dis->list_disp = NULL;
-    }
-
-    if (dis->list_issue) {
-        DL_FOREACH_SAFE(dis->list_issue->list, iter, tmp) {
-            free(iter->data);
-            free(iter);
-        }
-        iter = tmp = NULL;
-        free(dis->list_issue);
-        dis->list_issue = NULL;
-    }
-
-    if (dis->list_exec) {
-        DL_FOREACH_SAFE(dis->list_exec->list, iter, tmp) {
-            free(iter->data);
-            free(iter);
-        }
-        iter = tmp = NULL;
-        free(dis->list_exec);
-        dis->list_exec = NULL;
-    }
-
-    if (dis->list_wback) {
-        DL_FOREACH_SAFE(dis->list_wback->list, iter, tmp) {
-            free(iter->data);
-            free(iter);
-        }
-        iter = tmp = NULL;
-        free(dis->list_wback);
-        dis->list_wback = NULL;
-    }
-
-    if (g_trace_fptr) {
-        fclose(g_trace_fptr);
-        g_trace_fptr = NULL;
-    }
-
     return;
 }
 
-/* Parse the given trace file and feed instructions to the pipeline. */
+
+/*
+ * Parse the given trace file and feed instructions to the pipeline.
+ */
 static bool
 dis_parse_tracefile(struct dis_input *dis)
 {
-    bool        trace_done = FALSE;
-    char        *trace_fpath = NULL;
+    bool    trace_done = FALSE;
+    char    *trace_fpath = NULL;
 
     if (!dis) {
         dis_assert(0);
@@ -237,8 +253,7 @@ dis_parse_input(int argc, char **argv, struct dis_input *dis)
         goto error_exit;
     }
 
-    /* 
-     * Input arguments are of the form:
+    /* Input arguments are of the form:
      * sim <S> <N> <BLOCKSIZE> <L1_size> <L1_ASSOC> 
      *                         <L2_SIZE> <L2_ASSOC> <tracefile>
      */
@@ -293,6 +308,10 @@ main(int argc, char **argv)
      * inst onto the fetch stage.
      */
     dis_parse_tracefile(dis);
+
+    /* Cleanup and exit. */
+    dis_cleanup(dis);
+
     return 0;
 
 error_exit:

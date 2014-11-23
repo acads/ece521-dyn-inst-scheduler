@@ -257,8 +257,8 @@ dis_execute(struct dis_input *dis)
             /* Update this inst dreg ready bit and wakeup waiting insts. */ 
             dis_exec_update_regs(dis, iter);
 
-            /* DAN_TODO: Fix this. */
-            //free(iter);
+            /* Free the memory allocated for the inst that was just deleted. */
+            free(iter);
         }
     }
     return TRUE;
@@ -361,13 +361,10 @@ dis_issue(struct dis_input *dis)
                     dis_inst_list_get_len(dis, LIST_EXEC),
                     dis_get_cycle_num());
 
-            /* DAN_TODO: Fix this. */
-            //free(iter);
+            /* Free the memory allocated for the inst that was just deleted. */
+            free(iter);
         }
     }
-
-    /* Sort the exec list in the order of inst in trce file. */
-    //DL_SORT(dis->list_exec->list, dis_cb_cmp);
     return TRUE;
 
 error_exit:
@@ -468,7 +465,7 @@ dis_dispatch(struct dis_input *dis)
     /* First move as many inst as possile from ID to IS, then onto issue
      * list and remove them from dispatch list.
      */
-    DL_FOREACH_SAFE(list, iter, tmp) {
+    DL_FOREACH_SAFE(dis->list_disp->list, iter, tmp) {
         if (STATE_ID != dis_inst_get_state(iter))
             continue;
 
@@ -507,8 +504,8 @@ dis_dispatch(struct dis_input *dis)
                     dis_inst_list_get_len(dis, LIST_ISSUE),
                     dis_get_cycle_num());
 
-            /* DAN_TODO: Fix this. */
-            //free(iter);
+            /* Free the memory allocated for the inst that was just deleted. */
+            free(iter);
         }
     }
 
@@ -516,7 +513,7 @@ dis_dispatch(struct dis_input *dis)
     DL_SORT(dis->list_issue->list, dis_cb_cmp);
 
     /* Now, move the inst in IF state to ID state. */
-    DL_FOREACH(list, iter) {
+    DL_FOREACH(dis->list_disp->list, iter) {
         if (STATE_IF != dis_inst_get_state(iter))
             continue;
 
