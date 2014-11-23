@@ -213,7 +213,12 @@ dis_parse_tracefile(struct dis_input *dis)
 #endif /* DBG_ON */
 
     /* Done with all the inst execution. Print the stats and be gone. */
+#ifndef GRAPH_ON
     dis_print_inst_stats(dis);
+#else
+    dis_print_inst_graph_data(dis);
+#endif /* GRAPH_ON */
+
     return TRUE;
 
 error_exit:

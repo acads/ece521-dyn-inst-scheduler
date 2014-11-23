@@ -29,5 +29,8 @@ dis_print_inst_entry_stats(struct dis_input *dis, struct dis_inst_node *inst);
 inline void
 dis_print_inst_stats(struct dis_input *dis);
 
+void
+dis_print_inst_graph_data(struct dis_input *dis);
+
 #endif /* DIS_PRINT_H_ */
 

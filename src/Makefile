@@ -38,6 +38,9 @@ CLEANFILES = $(PROG) $(OBJS)
 DEBUG =
 #DEBUG = -g -pg -D DBG_ON
 
+# Use "make GRAPH="-D GRAPH_ON"" to have graph mode output enabled.
+GRAPH =
+#GRAPH = -D GRAPH_ON
 
 # Compiler options
 #

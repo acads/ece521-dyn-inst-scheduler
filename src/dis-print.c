@@ -95,6 +95,16 @@ dis_print_inst_stats(struct dis_input *dis)
 
 
 void
+dis_print_inst_graph_data(struct dis_input *dis)
+{
+    dprint("%u\t", dis->n);
+    dprint("%.2f\n",
+            (double) ((double) dis_get_inst_num() /
+                        (double) (dis_get_cycle_num() + 1)));
+    return;
+}
+
+void
 dis_print_list(struct dis_input *dis, uint8_t list_type)
 {
     int16_t                 dreg = 0;
