@@ -1,0 +1,9 @@
+\section{Important Definitions and Terms}
+Some of the important terms to understand the dynamic instruction scheduler are briefly discussed here.
+
+\subsection{Dispatch Bandwidth}
+Dispatch bandwidth (\textit{n}) denotes the maximum number of instructions that can be fetched by the processor in each cycle. In other words, it is the at most number of instructions that a processor can fetch in each cycle. This value plays an important role as it acts as the upper bound for the overall number of instructions that a processor could execute per cycle. 
+
+
+\subsection{Scheduling Queue Size}
+The scheduling queue size (\textit{s}) denotes the number of instructions that can be waiting in the reservation stations (of Tomasulo's algorithm) at any given time. An instruction waits in the reservation station(s) until all of its source operands are available. This value impacts the overall IPC of the processor as the processor cannot fetch new instructions if this queue is full.

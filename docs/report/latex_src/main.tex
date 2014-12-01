@@ -1,0 +1,49 @@
+\documentclass[a4paper]{article}
+
+\usepackage{fullpage}               % Reduce white space around margins
+\usepackage{graphicx}               % For including images
+\usepackage{chngcntr}               % For section-wise table/figure counters
+\usepackage{caption}                % For specifying figure/table captions and its attributes
+\usepackage{geometry}               % For specifying margin sizes
+\usepackage{multirow,tabularx}      % For row splits in a table
+
+
+\date{}                             % Don't print the date
+\linespread{1.5}                    % Line spacing = 1.5
+\counterwithin{table}{section}      % Count tables per-section
+\counterwithin{figure}{section}     % Count figures per-section
+\geometry{a4paper, margin=1.00in}
+
+\begin{document}
+
+% Create title page
+    \begin{titlepage}
+        \vspace*{\fill}
+        \begin{center}
+            {\huge \bf ECE 521 - Computer Design Techniques \\ Fall 2014 \\ \vspace {8 mm} \\ \LARGE \bf Dynamic Instruction Scheduler \\ \vspace{4 mm} Project Report}
+            
+            {\vspace{9 mm} \it \large Prepared by \\ \bf \Large Aravindhan Dhanasekaran\\ \bf \large adhanas@ncsu.edu}
+        \end{center}
+        \vspace*{\fill}
+    \end{titlepage}
+
+
+\pagenumbering{roman}
+\newpage
+\tableofcontents
+\listoffigures
+\listoftables
+\newpage
+\pagenumbering{arabic}
+
+
+\input{chapters/1_introduction.tex}
+\input{chapters/2_formulas.tex}
+\input{chapters/3_terms.tex}
+\input{chapters/4_experiments.tex}
+\input{chapters/5_analysis.tex}
+\input{chapters/6_conclusion.tex}
+
+
+\end{document}
+

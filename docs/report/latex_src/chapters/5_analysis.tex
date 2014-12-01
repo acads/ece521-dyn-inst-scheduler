@@ -1,0 +1,28 @@
+\section{Analysis and Trends}
+In this section, we analyze the data obtained from the experiment runs that were discussed in section 4. We analyze the data for theoretical correctness, study the relationship between \textit{s}, \textit{n} and \textit{IPC}, and discuss the trends seen amongst different configurations of the same benchmark and finally contrast them with other benchmarks.
+
+
+\subsection{Theoretical Correctness}
+Theoretically speaking, \textit{IPC} should never be greater than the dispatch bandwidth as we can only fetch \textit{n} instructions per cycle, we cannot execute more than \textit{n} instructions per cycle. However, in an ideal case, both \textit{n} and \textit{IPC} should be just the same. This is very evident from the \textit{IPC} values that are shown in tables \ref{tab:gcc} and \ref{tab:perl}. In both the cases, for any value of \textit{n}, \textit{IPC} is less than or equal to that value. 
+
+
+\subsection{Benchmark Trends}
+It can be clearly seen from the figures, \ref{fig:gcc} and \ref{fig:perl} the IPC saturates very quickly for lower values of \textit{n}, given that there is enough buffering to hold all the waiting instructions; i.e., as long as \textit{s} is large enough to hold \textit{n} instructions. Also, the performance of the processor, in terms of the number of cycles that it could execute increases greatly when both \textit{n} and \textit{s} are increased. This could be inferred from the curves for \textit{n} = 8 in figures \ref{fig:gcc} and \ref{fig:perl}.
+
+In order to achieve optimal \textit{IPC}, the dispatch bandwidth should be equal or greater than a certain threshold, in our case, it is 8. This is because, we need a larger window of instructions to find the independent instructions. When \textit{n} is smaller, the window is smaller. Given that most of the dependent instructions are placed adjacent to each to each other, the probability of presence of independent instructions in a smaller window is very less.
+
+
+\subsection{Benchmark Analysis}
+In this section, the results of the experiments are contrasted with various parameters such as ideal IPC value, relationship between \textit{n}, \textit{s} and \textit{IPC}, law of diminishing returns and finally, benchmark comparison.
+
+\subsubsection{Ideal IPC}
+It is interesting to note that none of the configurations of the schedulers resulted in an ideal \textit{IPC} of 1, except for cases where the dispatch bandwidth itself is 1. This essentially does not mean ideal, as the final \textit{IPC} is averaged over 2 million values. This actually reflects the real world cases where ideal \textit{IPC} is never reached.
+
+\subsubsection{Law of Diminishing Returns}
+It could be inferred from the values in tables \ref{tab:gcc} and \ref{tab:perl} that \textit{IPC} saturates after a threshold and the law of diminishing returns does not apply here, unlike other processor performance attributes such as cache miss rate and branch mis-prediction rate. For gcc benchmark, \textit{IPC} stablizes at \textit{s} = \{16, 16, 64, 128\} for \textit{n} = \{1, 2, 4, 8\} respectively. For perl benchmark, \textit{IPC} stablizes at \textit{s} = \{16, 32, 128, 256\} for \textit{n} = \{1, 2, 4, 8\} respectively. 
+
+\subsubsection{Relationship between \textit{IPC}, \textit{s} \& \textit{n}}
+It can be also seen from figures \ref{fig:gcc} and \ref{fig:perl} that \textit{IPC} increases as \textit{s} increases, but this is also influenced by \textit{n}, as the processor cannot finish executing anymore instructions that what it fetches. \textit{IPC} increases when \textit{n} increases too, but it is not entirely independent. It is dependent on \textit{s}; for example in gcc benchmark, for \textit{s} = 8 and \textit{n} = 1, \textit{IPC} is 0.99, but when \textit{n} is increased to 8 with \textit{s} being still at 1, \textit{IPC} is only about 2.82, which is way less than 8. This clearly shows that \textit{IPC} is influenced by \textit{s} more than by what it is influenced by \textit{n}.
+
+\subsubsection{Performance of gcc \& perl Benchmarks}
+Also for the same micro-architecture configurations, the \textit{IPC} values are different for gcc and perl benchmarks, with gcc resulting in a slightly better performance. This could be attributed to the instruction distance between interdependent instructions. If iB is dependent on iA and iC is dependent on iB, the time iA takes to finish execution directly impacts the time iB takes and indirectly impacts the wait time for iC. If there are more multi-level interdependent instructions, the performance of the architecture might degrade.
