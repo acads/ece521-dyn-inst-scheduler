@@ -68,8 +68,10 @@ main(int argv, char **argc)
         printf("tag %u, state %u, type %u\n", loc->data.tag, loc->data.state, loc->data.type);
 
     DL_FOREACH_SAFE(list, loc, loc1) {
-        if (!(loc->data.tag % 3))
+        if (!(loc->data.tag % 3)) {
             DL_DELETE(list, loc);
+            free(loc);
+        }
     }
     
     printf("\nafter delete\n");
@@ -77,6 +79,11 @@ main(int argv, char **argc)
     printf("# elements in list is %u\n", count);
     DL_FOREACH(list, loc)
         printf("tag %u, state %u, type %u\n", loc->data.tag, loc->data.state, loc->data.type);
+
+    DL_FOREACH_SAFE(list, loc, loc1) {
+        DL_DELETE(list, loc);
+        free(loc);
+    }
 
     return 0;
 }
