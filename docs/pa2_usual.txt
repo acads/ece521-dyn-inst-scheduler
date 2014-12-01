@@ -1,24 +1,61 @@
-Added partial support for dispatch stage handler
+cleanup: removed dead code, not-required header includes
 
 Fix Description
 ===============
-    * Support for dispatch handler. Currently handles IF-->ID state transition.
-    * Disable optimization and warnings-as-errors in Makefile.
-    * New dispatch statge utlist dll.
-    * New routine for can_fetch conditions check (to be evolved).
-    * Many more static inline util routines.
-    * TODO: Update dispatch handler with ID-->IS state transistions.
-    * TODO: Support for issue stage handler.
-
+    * Removed all #if 0'd code.
+    * Removed header includes that are not required.
+    * Fixed all warnings and enabled treat-warning-as-errors flag in Makefile.
+    * Enabled O5 level of optimization in Makefile.
+    
 Stats
 =====
- src/Makefile    |   1 +
- src/dis-print.c |  26 ++++++++++
- src/dis-print.h |   2 +
- src/dis.c       | 199 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
- src/dis.h       |  47 +++++++++++++++---
- 5 files changed, 261 insertions(+), 14 deletions(-)
 
+Tests
+=====
+    * run_tests.sh 5 1 passed (i.e., for all 4 runs with diffs enabled).
+    * valgrind reported 0 bytes loss at exit.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 time ./sim 16 4 0 0 0 0 0 gcc.100 
+
+set history size unlimited 
+set history save on
+set history expansion on
+run 32 8 32 1024 4 2048 8 ../docs/val_perl_trace_mem.txt 
+
+run 16 4 32 2048 8 0 0 ../docs/val_perl_trace_mem.txt 
+
+run 16 4 0 0 0 0 0 gcc.100 
+
+
+
+time ./sim 16 4 0 0 0 0 0 ../docs/val_gcc_trace_mem.txt > ad_gcc.10k
+time ./sim 32 16 0 0 0 0 0 ../docs/val_perl_trace_mem.txt > ad_perl.10k
+
+
+time ./sim 16 4 32 2048 8 0 0 ../docs/val_gcc_trace_mem.txt > ad_gcc_extra.10k
+time ./sim 32 8 32 1024 4 2048 8 ../docs/val_perl_trace_mem.txt > ad_perl_extra.10k
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+90c90
+< 89 fu{2} src{2,-1} dst{2} IF{37,1} ID{38,4} IS{42,22} EX{64,20} WB{84,1}
+---
+> 89 fu{2} src{2,-1} dst{2} IF{37,1} ID{38,4} IS{42,22} EX{64,5} WB{69,1}
+93c93
+< 92 fu{0} src{4,2} dst{-1} IF{38,1} ID{39,5} IS{44,40} EX{84,1} WB{85,1}
+---
+> 92 fu{0} src{4,2} dst{-1} IF{38,1} ID{39,5} IS{44,25} EX{69,1} WB{70,1}
+101,108d100
+< CONFIGURATION
+<  superscalar bandwidth (N) = 4
+<  dispatch queue size (2*N) = 8
+<  schedule queue size (S)   = 16
+< RESULTS
+<  number of instructions = 100
+<  number of cycles       = 91
+<  IPC                    = 1.10
+End of gcc extra test run diff
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./sim 32 8 32 1024 4 2048 8 val_perl_trace_mem.txt > val_extra_2.txt
